@@ -60,3 +60,17 @@ def test_load_config_bad_json_raises(tmp_path):
     p.write_text("{not json", encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(p)
+
+
+def test_non_string_runtime_rejected():
+    cfg = _valid()
+    cfg["runtime"] = ["local"]
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_non_utf8_file_raises_config_error(tmp_path):
+    p = tmp_path / "config.json"
+    p.write_bytes(b"\xff\xfe not utf8")
+    with pytest.raises(ConfigError):
+        load_config(p)

@@ -10,7 +10,7 @@ def load_config(path):
     p = Path(path)
     try:
         raw = p.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise ConfigError(f"cannot read config at {p}: {exc}") from exc
     try:
         cfg = json.loads(raw)
@@ -33,7 +33,7 @@ def validate_config(cfg):
         errors.append("target_domain: required non-empty string")
 
     runtime = cfg.get("runtime")
-    if runtime not in VALID_RUNTIMES:
+    if not isinstance(runtime, str) or runtime not in VALID_RUNTIMES:
         errors.append(f"runtime: must be one of {sorted(VALID_RUNTIMES)}")
 
     ua = cfg.get("user_agent")
