@@ -11,7 +11,10 @@ class Manifest:
         self.errors = []
 
     def record_scraped(self, url, record):
-        self.scraped.append({"url": url, "record": record})
+        # record is always a dict here (parse_fn returns dict|None and None is
+        # skipped, not scraped); copy it so later caller-side mutation of the
+        # original dict can't leak into the stored manifest entry.
+        self.scraped.append({"url": url, "record": dict(record)})
 
     def record_skipped(self, url, reason):
         self.skipped.append({"url": url, "reason": reason})

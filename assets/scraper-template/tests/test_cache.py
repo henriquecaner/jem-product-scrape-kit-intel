@@ -17,6 +17,18 @@ def test_slug_is_filesystem_safe():
     assert slug
 
 
+def test_slug_distinct_for_shared_tail(tmp_path):
+    url_a = "https://ex.com/A/widget-1"
+    url_b = "https://ex.com/B/widget-1"
+    assert slug_for(url_a) != slug_for(url_b)
+    assert cache_path(tmp_path, url_a) != cache_path(tmp_path, url_b)
+
+    url_c = "https://ex.com/p?id=1"
+    url_d = "https://ex.com/p?id=2"
+    assert slug_for(url_c) != slug_for(url_d)
+    assert cache_path(tmp_path, url_c) != cache_path(tmp_path, url_d)
+
+
 def test_cache_roundtrip(tmp_path):
     url = "https://example.com/p/widget-1"
     assert not is_cached(tmp_path, url)

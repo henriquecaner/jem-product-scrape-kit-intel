@@ -66,6 +66,16 @@ def test_build_pacer_uses_floor(tmp_path):
     assert pacer.floor == 2.5
 
 
+def test_build_pacer_clamps_inverted_range(tmp_path):
+    cp, _ = _write(tmp_path)
+    cfg = json.loads(cp.read_text())
+    cfg["min_delay_seconds"] = 5
+    cfg["max_delay_seconds"] = 3
+    cfg["rate_limit_floor_seconds"] = 2.5
+    pacer = build_pacer(cfg)
+    assert pacer.max_delay >= pacer.min_delay
+
+
 def test_run_smoke_returns_zero_on_valid(tmp_path):
     cp, ap = _write(tmp_path)
     assert run_smoke(cp, ap, NOW) == 0

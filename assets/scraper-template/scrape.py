@@ -14,9 +14,11 @@ AUTHZ_PATH = HERE / ".scrape-authorization.json"
 
 
 def build_pacer(cfg):
+    """Build a Pacer from raw config, normalizing an inverted min/max range (assumes cfg may not have passed validate_config)."""
     floor = cfg["rate_limit_floor_seconds"]
     lo = cfg.get("min_delay_seconds", floor)
     hi = cfg.get("max_delay_seconds", max(floor, lo))
+    hi = max(lo, hi)
     return Pacer(min_delay=lo, max_delay=hi, floor=floor)
 
 

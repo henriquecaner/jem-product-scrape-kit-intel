@@ -13,6 +13,9 @@ def run(*, urls, parse_fn, cache_dir, fetcher, pacer, cursor, manifest, reparse=
                 cache_mod.atomic_write(cache_mod.cache_path(cache_dir, url), html)
                 pacer.wait()
         except Exception as exc:  # fetch/cache failure: record and move on
+            # Intentional design: an errored URL is marked done in the cursor
+            # and is NOT retried on a later resume run — fetch() already
+            # retries internally, so a persisted error is treated as final.
             manifest.record_error(url, str(exc))
             cursor.add(url)
             cursor.save()

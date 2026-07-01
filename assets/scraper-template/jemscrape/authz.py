@@ -12,6 +12,10 @@ VALID_ROBOTS = {"allowed", "disallowed"}
 
 @dataclass
 class Authorization:
+    # NOTE: `scope` and `requires_approval` are loaded and validated-for-presence
+    # here, but not yet ENFORCED — enforcement (run-plan approval gate, and
+    # discovery/URL scoping against `scope`) lands in later plans (Plan 2+).
+    # This loaded-but-not-enforced gap is intentional and tracked, not an oversight.
     target_domain: str
     authorization_type: str
     approver: str

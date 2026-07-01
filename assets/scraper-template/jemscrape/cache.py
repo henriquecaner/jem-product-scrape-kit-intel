@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -15,10 +16,15 @@ def atomic_write(path, text):
 
 
 def slug_for(url):
+    # Readable prefix (last path segment) is NOT unique on its own — different
+    # URLs can share a tail (e.g. /A/widget-1 vs /B/widget-1, or ?id=1 vs ?id=2).
+    # A short hash of the full URL is appended to keep the mapping injective and
+    # avoid silent cache collisions between distinct URLs.
     tail = url.rstrip("/").rsplit("/", 1)[-1] or url
     tail = tail.split("?", 1)[0].split("#", 1)[0]
-    slug = _SAFE.sub("-", tail).strip("-")
-    return slug or "index"
+    readable = _SAFE.sub("-", tail).strip("-") or "index"
+    digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
+    return f"{readable}-{digest}"
 
 
 def cache_path(cache_dir, url):
@@ -30,7 +36,7 @@ def is_cached(cache_dir, url):
 
 
 def read_cached(cache_dir, url):
-    return cache_path(cache_dir, url).read_text(encoding="utf-8")
+    return cache_path(cache_dir, url).read_text(encoding="utf-8", errors="replace")
 
 
 class Cursor:
