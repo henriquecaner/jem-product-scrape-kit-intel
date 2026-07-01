@@ -1,3 +1,5 @@
+import json
+
 from jemscrape.cache import atomic_write, slug_for, cache_path, is_cached, read_cached, Cursor
 
 
@@ -35,3 +37,23 @@ def test_cursor_persists_and_reloads(tmp_path):
     reloaded.load()
     assert reloaded.done("https://x/1")
     assert not reloaded.done("https://x/2")
+
+
+def test_cursor_tolerates_non_dict_json(tmp_path):
+    cpath = tmp_path / "state" / "cursor.json"
+    cpath.parent.mkdir(parents=True, exist_ok=True)
+    cpath.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+
+    cur = Cursor(cpath)
+    cur.load()  # must not raise
+    assert not cur.done("x")
+
+
+def test_cursor_tolerates_wrong_typed_done(tmp_path):
+    cpath = tmp_path / "state" / "cursor.json"
+    cpath.parent.mkdir(parents=True, exist_ok=True)
+    cpath.write_text(json.dumps({"done": "abc"}), encoding="utf-8")
+
+    cur = Cursor(cpath)
+    cur.load()  # must not raise
+    assert cur.done("a") is False

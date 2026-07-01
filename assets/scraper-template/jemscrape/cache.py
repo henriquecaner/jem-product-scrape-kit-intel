@@ -42,7 +42,8 @@ class Cursor:
         if self.path.exists():
             try:
                 data = json.loads(self.path.read_text(encoding="utf-8"))
-                self._done = set(data.get("done", []))
+                done = data.get("done", []) if isinstance(data, dict) else []
+                self._done = set(done) if isinstance(done, list) else set()
             except (OSError, json.JSONDecodeError):
                 self._done = set()
         return self
