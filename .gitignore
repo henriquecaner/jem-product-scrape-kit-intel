@@ -17,3 +17,6 @@ venv/
 *.secret
 .env
 .scrape-authorization.json
+
+# SDD progress ledger (scratch)
+.superpowers/
