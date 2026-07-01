@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+testpaths = ["assets/scraper-template/tests"]
+pythonpath = ["assets/scraper-template"]
+addopts = "-q"
