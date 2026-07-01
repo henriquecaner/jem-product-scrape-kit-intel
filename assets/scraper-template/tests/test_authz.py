@@ -71,6 +71,28 @@ def test_own_account_disallowed_ok():
              "https://example.com/", NOW)
 
 
+def test_naive_expires_at_rejected_not_typeerror():
+    with pytest.raises(AuthorizationError):
+        validate(
+            _auth(expires_at="2026-07-08T09:00:00"),
+            "https://example.com/",
+            NOW,
+        )
+
+
+def test_partner_disallowed_with_whitespace_override_rejected():
+    with pytest.raises(AuthorizationError):
+        validate(
+            _auth(
+                authorization_type="contracted_partner",
+                robots_status="disallowed",
+                robots_override_ref="   ",
+            ),
+            "https://example.com/",
+            NOW,
+        )
+
+
 def test_load_missing_file_raises(tmp_path):
     with pytest.raises(AuthorizationError):
         load_authorization(tmp_path / "nope.json")

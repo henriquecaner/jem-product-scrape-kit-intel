@@ -61,11 +61,20 @@ def validate(auth, target_url, now):
             f"target host {host!r} does not match authorized domain {auth.target_domain!r}"
         )
 
-    if now >= _parse_dt(auth.expires_at, "expires_at"):
+    expires = _parse_dt(auth.expires_at, "expires_at")
+    if expires.tzinfo is None:
+        raise AuthorizationError("expires_at must include a timezone offset")
+    try:
+        is_expired = now >= expires
+    except TypeError as exc:
+        raise AuthorizationError(f"cannot compare expiry ({exc})") from exc
+    if is_expired:
         raise AuthorizationError(f"authorization expired at {auth.expires_at}")
 
+    override_ref = auth.robots_override_ref
+    has_override = bool(override_ref) and bool(str(override_ref).strip())
     if auth.robots_status == "disallowed":
         if auth.authorization_type == "public_competitor":
             raise AuthorizationError("robots.txt disallows and target is a public competitor — hard block")
-        if auth.authorization_type == "contracted_partner" and not auth.robots_override_ref:
+        if auth.authorization_type == "contracted_partner" and not has_override:
             raise AuthorizationError("robots.txt disallows; contracted_partner requires robots_override_ref")
