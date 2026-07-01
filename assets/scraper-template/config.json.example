@@ -1,0 +1,8 @@
+{
+  "target_domain": "example.com",
+  "runtime": "local",
+  "user_agent": "Mozilla/5.0 (compatible; JEMScrape/1.0; +mailto:ops@jemsystems.com)",
+  "rate_limit_floor_seconds": 2.5,
+  "min_delay_seconds": 2.5,
+  "max_delay_seconds": 5.0
+}
