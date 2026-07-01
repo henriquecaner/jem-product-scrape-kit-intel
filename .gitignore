@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Skills provisionadas pelo ambiente, não fazem parte deste plugin
+.agents/
+
+# Artefatos de runtime de scrapers gerados — nunca commitar cache cru ou segredos
+**/data/
+*.token
+*.secret
+.env
+.scrape-authorization.json

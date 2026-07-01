@@ -1,0 +1,370 @@
+# Design — `jem-product-scrape-kit-intel`
+
+**Data:** 2026-07-01
+**Autor:** Henrique Caner (JEM Systems) + Claude Code
+**Status:** Aprovado para plano de implementação
+**Revisão:** rev2 — incorpora o deep review multi-agente (49 achados verificados). Rastreabilidade no §21.
+
+---
+
+## 1. Contexto e objetivo
+
+A JEM Systems precisa scrapear produtos de fornecedores e concorrentes para subir no catálogo com qualidade e gerar vendas. Isso já foi feito duas vezes no repo Fast-Alarm, com processos diferentes:
+
+- **firechiefglobal** — scrape local via Claude Code, site Magento server-rendered, sem autenticação.
+- **fortuslive** — exigia login e IP do Reino Unido; rodou numa VM GCP com IP UK, autenticada, em horário comercial para não derrubar a conta.
+
+O objetivo é empacotar esse conhecimento num plugin que qualquer pessoa do time JEM use sozinha, com segurança e — o que mais importa — com dados de qualidade. Cada projeto tem um objetivo próprio (análise de preços, comparação de qualidade de dados, criação de produtos em Shopify ou Magento via NetSuite), mas todos partem da mesma fundação de scraping.
+
+O nome canônico do plugin é **`jem-product-scrape-kit-intel`** (definido no `plugin.json`). Mora num repositório standalone e é publicado no marketplace interno da JEM. O diretório atual do repo (`jem-aget-product-scap-plugin`) tem typos e será renomeado para o nome canônico como primeira tarefa do plano (ver §19).
+
+## 2. Decisões travadas (resumo do brainstorming)
+
+| Decisão | Escolha |
+|---|---|
+| Foco da v1 | Fundação de scraping reutilizável (motor compartilhado + skills por objetivo em cima) |
+| Perfil de uso | Majoritariamente não-técnicos → skills como wizard guiado, máxima automação |
+| Estratégia de fetch | Híbrida: HTTP stdlib como padrão (núcleo zero-dep); Playwright sob demanda para JS/auth |
+| Contrato de saída | Registro canônico normalizado **e** cache cru + manifest (o cru é subproduto, o canônico é a entrega) |
+| Compliance | Enforcement em runtime (`scrape.py`/workflow) + hook de defesa-em-profundidade + checklist guiado |
+| Packaging | Templates + scaffolding (o motor vive como templates que as skills instanciam e adaptam) |
+| Ambiente do usuário | Notebooks Windows corporativos (90%); usuário cria/loga contas sozinho, mas depende da TI para instalar software |
+| Superfícies | Terminal CLI e Desktop (modo local); web fora de escopo |
+| Runtime pesado | GitHub Actions + proxy de país como padrão para público/geo/agendado; auth+multi-dias tem ritual de token; GCP VM e Cloudflare como fallbacks |
+| Política de modelo | Nunca usar Haiku; tier econômico é Sonnet 5 `medium` (thinking off para extração simples, on para julgamento) |
+
+## 3. Arquitetura — duas camadas
+
+**Camada 1 — O Motor (v1).** Núcleo HTTP/parse **zero-dependência em Python 3 stdlib**, templates de infra, e as skills que os instanciam e adaptam por site. Leva qualquer pessoa do time do zero até um catálogo scrapeado e normalizado, com auditoria de qualidade no fim. **O caminho browser/autenticação usa Playwright** como dependência declarada e opcional (login, captura de sessão via `storage_state`, fetch de páginas com JS) — só entra quando o site exige, e é instalado pela TI para quem precisa (§6, §12).
+
+**Camada 2 — Skills por objetivo (roadmap, interface definida agora).** Análise de preços, comparação de qualidade de dados, criação de produto em Shopify e Magento/NetSuite. Consomem o registro canônico produzido pela Camada 1.
+
+O princípio central: **o motor não conhece o objetivo.** Ele entrega um registro de produto padronizado; as skills de objetivo trabalham em cima dele. As camadas ficam isoladas e testáveis de forma independente.
+
+## 4. Superfícies suportadas
+
+O plugin roda o mesmo motor do Claude Code contra a máquina local real em **duas superfícies**, e ambas carregam skills, agents, hooks, commands e MCP de forma idêntica:
+
+- **Terminal CLI** — suporte completo.
+- **App Desktop (modo local)** — suporte completo. Ressalva: ao abrir pelo Dock/Finder o app nem sempre herda o `PATH` do shell, então `python3`/`playwright`/`gcloud` podem "não ser encontrados" mesmo instalados. O `/scrape-setup` **escreve** o `env`/`PATH` correto em `~/.claude/settings.json` (não é passo manual do usuário) e valida no check verde.
+
+**Fora de escopo: Claude Code na web (e sessões "remote").** A web roda em VM na nuvem da Anthropic, sem acesso à máquina local — plugins não carregam, hooks não rodam, e não há Chrome/scheduler locais. Documentado no README.
+
+## 5. Runtimes de execução
+
+O plugin suporta três runtimes. A orquestradora escolhe a partir de: *precisa logar? precisa de IP de um país específico? precisa rodar agendado sem supervisão? qual o volume/duração estimados?*
+
+```
+Precisa logar?  país?  agendado sem supervisão?
+  └─ Nada disso (público, avulso) ─────────────► LOCAL (roda na máquina Win/mac)
+  └─ Só país e/ou agendado, SEM auth ──────────► GITHUB ACTIONS  (sweet spot)
+        país → HTTPS_PROXY com saída no país (proxy provisionado pela TI, §19)
+        agendado → cron em pedaços + checkpoint versionado (state/cursor.json)
+        browser → Playwright dentro do Actions + proxy no launch
+  └─ Autenticado ──────────────────────────────► depende da duração:
+        cabe numa janela (~1 dia útil, token ~10h) → GITHUB ACTIONS (1 run)
+        multi-dias → GITHUB ACTIONS + ritual diário de token (§5.1), OU
+        re-login interativo não-automatizável / volume muito alto → VM (fallback, §19)
+```
+
+**Recuperação das saídas (todos os runtimes cloud).** O run gera o entregável em `exports/` (products.csv, wiki/, scrape_manifest.json). No Actions, além de versionar `exports/` no repo, o workflow publica via `actions/upload-artifact`. O `/scrape-status` devolve o link do artifact/commit; `pull.py` baixa localmente. **Só o cache cru (`data/`) e segredos ficam gitignored** — `exports/`, `wiki/` e `state/` são versionados (markdown/CSV são leves; o peso de 355MB do firechief era cache HTML, que fica em `data/`).
+
+**Fallbacks documentados (não-v1):**
+- **Cloudflare Workers** — para sites que exigem login mas **não** têm geo-block; Workflows/Durable Objects dão execução durável e pausada melhor que o Actions (`step.sleep` até 365 dias, não bilhado enquanto dorme). **Não resolve geo** (o egress do Worker não sai por país específico nem usa proxy externo de forma suportada). Requer conta Cloudflare (self-serve) + plano Workers Paid.
+- **GCP VM** — para o caso auth+re-login-interativo ou volume muito alto; ou se o ToS do Actions virar bloqueio. **Requer a org/TI provisionar projeto GCP + billing + IAM** (§19); o usuário não tem conta GCP, então este caminho é dirigido pela TI, não self-serve.
+
+**Por que Actions + proxy é o padrão para público/geo/agendado:** desacopla os problemas que a VM resolvia. Geo vira config de proxy (qualquer runtime honra `HTTP_PROXY`); o agendamento vira cron; o deploy inteiro é feito via API REST do GitHub (o Claude Code escreve o workflow com escopo `workflow` e seta secrets via `gh secret set`). Zero instalação de VM, sem GCP no caminho padrão.
+
+**Risco de ToS do GitHub Actions (aceito).** Scraping autenticado/geo-restrito/cron contra concorrentes é um perfil que o GitHub pode tratar como uso abusivo (cláusula de "atividade não relacionada / carga desproporcional"). A mitigação "o scraper é o projeto de software do repo" é **parcial**. Decisão: registrar como **risco aceito** (posição da org/jurídico) e **roteamento sensível a volume/continuidade** — cargas pesadas e contínuas vão para VM/Cloudflare por padrão, não como reação a um bloqueio (ver §18).
+
+**Cuidados do runtime Actions:** runs agendados atrasam e às vezes caem → cada run é idempotente e retoma do `state/cursor.json`; auto-disable após 60 dias de inatividade → os commits de checkpoint contam como atividade; repo **privado** para dado sensível (2.000 min/mês grátis, suficiente para scrape pausado); repo público só para dado genuinamente público. Proxy é serviço pago (residencial UK ~US$1,75+/GB), mas scrape pausado usa pouca banda.
+
+### 5.1 Ciclo de vida da sessão autenticada
+
+Ponto crítico do caminho auth: o token/sessão (JWT no Chrome, ~10h) expira, e a captura é **intrinsecamente local** (só a máquina do usuário loga no Chrome). Distinguir duas coisas:
+
+- **Sessão recuperável (progresso):** o `state/cursor.json` deixa qualquer run retomar de onde parou. Isso é independente do token.
+- **Renovação de token:** processo separado, com dono e mecanismo explícitos.
+
+Regras:
+1. **Captura local** — `auth_capture.py` (Playwright): o usuário loga no Chrome (com proxy no launch quando há geo), a sessão é salva via `storage_state`, e o token é extraído dela. Nada de ler leveldb cru.
+2. **Push do token** — o driver empurra a sessão como **secret do Actions via `gh secret set`** (por isso `gh` está no toolchain do caminho auth; a criptografia libsodium fica com o `gh`).
+3. **Janela** — runs autenticados no Actions são fatiados para caber logo após o refresh diário, dentro da vida do token.
+4. **Expiro mid-run → fail-closed + alerta** — o `scrape.py` detecta 401/403, para (não crasheia), grava o cursor, e abre uma issue/dispara `notify.py`. Nada de continuar cego.
+5. **Máquina offline** — se o run agendado precisa de token novo e a máquina do usuário está desligada, o run pausa e alerta; retoma no próximo refresh. Documentado como limitação honesta.
+6. **Gatilho de promoção** — se o site exige re-login interativo que não dá pra automatizar dentro da vida do token, promove para VM (fortus-style, dirigido pela TI).
+
+## 6. Onboarding em duas fases
+
+Como o usuário cria contas sozinho mas depende da TI para instalar software, o onboarding (skill `scrape-onboarding`, comando `/scrape-setup`) se divide em duas fases:
+
+**Fase A — uma vez por máquina, precisa da TI.** Detecta o que falta e gera um "kit para a TI": documento + comandos silenciosos (winget IDs + flags) para instalar de uma vez só. Toolchain:
+- Git + GitHub Desktop + **`gh` CLI** (o `gh` é o que permite `gh secret set` no caminho auth)
+- Python 3
+- **Playwright + Chromium** (`pip install playwright` + `playwright install chromium`) — só para o caminho browser/auth; pode exigir a TI se o download do browser for bloqueado
+- Chrome (normalmente já presente)
+- `gcloud` **apenas** se o usuário for usar o fallback VM (fora do pedido padrão)
+
+**Fase B — o usuário faz sozinho, re-executável.**
+- Criar/logar conta GitHub e autenticar o `gh`
+- Fix de PATH/`env` do Desktop (o `/scrape-setup` escreve em `settings.json`; não é manual)
+- Criar o repo do projeto
+- **Check verde final** que só libera o `/scrape-init` quando tudo (incl. `gh auth status`, Playwright, PATH) está OK
+
+Pré-requisitos que **não** são do usuário e sim da org/TI (ver §19): a conta de proxy compartilhada, a `ANTHROPIC_API_KEY` (para normalização via LLM no Actions), e — se for usar VM — o projeto GCP. Se tudo já estiver instalado/provisionado, pula direto para a Fase B.
+
+## 7. Registro Canônico JEM
+
+Interface única entre o motor e as skills de objetivo. Versionado (`schema_version`) para não quebrar silenciosamente as skills da Camada 2 quando evoluir.
+
+```
+schema_version                     (ex.: "1.0"; política aditiva por default, breaking bump major)
+source_site, source_url, scraped_at (ISO 8601)
+authorization_ref                  (id do .scrape-authorization.json que autorizou esta captura)
+product_id                         (CHAVE DE IDENTIDADE canônica p/ dedup e retomada — sku normalizado
+                                    ou master_id da fonte; documentada por site em canonical-record.md)
+sku, name, brand, description_raw, description_clean
+breadcrumbs[], division, category_path
+images[]                           (URLs full-res)
+specs{}                            (atributos técnicos chave:valor)
+variants[]                         (cada variante com seus prices[])
+prices[]                           ({ value, currency, source, band } — múltiplas bandas, ex. PLE-J015 vs universal)
+list_price, cost_price
+stock{ total, by_location }        (dedup de hub aplicado no normalize)
+attachments[]                      ({ label, url }), related[] ({ title, url })
+raw_ref                            (ponteiro para o arquivo cru em cache)
+```
+
+Formatos de campo (`authorization_ref`, `related[]`, `attachments[]`) definidos em `references/canonical-record.md`. **Exports:** `exports/products.csv`, `exports/wiki/**.md` (por breadcrumb), `exports/scrape_manifest.json` (carrega `schema_version`). O `canonical-record.md` documenta o mapeamento para Shopify (title / body_html / vendor / variants / images), Magento/NetSuite e GMC (reusa a skill `gmc-quality` que já existe no ambiente JEM), a política de evolução do schema, e a chave de identidade por site.
+
+## 8. Componentes do plugin
+
+**Skills:**
+| Skill | Papel |
+|---|---|
+| `scrape-onboarding` | Onboarding de primeira vez (via `/scrape-setup`): toolchain, GitHub/`gh`, Playwright, fix de PATH (escreve settings.json), pré-requisitos de org, check verde |
+| `scrape-product-catalog` | Orquestrador-wizard (via `/scrape-init`): entende o alvo, roda o gate, escolhe runtime, faz scaffold, dirige canary → run-plan → run → normalize |
+| `scrape-compliance-gate` | Segurança em camadas; grava/valida o `.scrape-authorization.json` (schema em §10.1) |
+| `scrape-normalize-export` | Cru → registro canônico + CSV/wiki/manifest; dedup/reconciliação (multi-band, hub-stock, multi-pass) |
+| `scrape-run-plan` | Gera o briefing pré-run (escopo, ETA, custo, riscos, aprovação); render em PDF com fallback |
+
+**Commands:** `/scrape-setup` (1ª vez) · `/scrape-init` (novo projeto) · `/scrape-status` (lê `state/cursor.json` + `docs/DAILY.md`; no Actions entrega link do artifact/commit).
+
+**References:** `runtime-local.md` · `runtime-github-actions.md` (estrela — inclui contrato de token, checkpoint, monitoramento) · `runtime-cloudflare-optional.md` · `runtime-vm-fallback.md` · `canonical-record.md` · `anti-ban-playbook.md` · `geo-proxy.md` · `execution-strategy.md` · `windows-toolchain.md` · `estimation.md`.
+
+**Assets / templates (o motor):**
+- `assets/scraper-template/` — `scrape.py` (núcleo HTTP zero-dep + adaptador Playwright opcional; **valida a autorização em runtime e aborta non-zero — ver §10**), `smoke_test.py`, `notify.py`, `build_dataset.py` (o passo que chama a API com Batch quando roda no Actions), `config.json.example` (declara `rate_limit_floor` como campo)
+- `assets/drivers/` — `auth_capture.py` (Playwright `storage_state` + push via `gh`), `daily_refresh.py`, `pull.py`, `watch.py`, `render_pdf.py` (descobre o binário do Chrome; fallback HTML/Markdown se não achar) — Python cross-platform
+- `assets/vm/` — `startup-script.sh`, `deploy_vm.sh`, `push_token.sh` (bash, roda no Linux da VM; só no fallback)
+- `assets/github-actions/` — template de workflow `.yml` (cron em pedaços, secrets, checkpoint, `upload-artifact`, gate de autorização em runtime)
+- `assets/project-skeleton/` — README, `.gitignore` (bloqueia só `data/`, tokens, credenciais), `docs/DAILY.md`, `docs/AUDIT.md`
+- `assets/run-plan-template/` — HTML/CSS do briefing
+- `assets/it-request/` — template do pedido para a TI (toolchain + proxy + GCP + API key)
+
+**Agent:** `scrape-run-auditor` — revisa cobertura/qualidade pós-scrape (drift de paginação, dedup, price sourcing, % de cobertura, validade de imagem). Roda em Opus com effort `xhigh`; escala para workflow multi-agente quando há riscos detectados.
+
+**Hooks (defesa-em-profundidade, não a garantia primária):** `PreToolUse` em Python que, na autoria dentro do Claude Code, bloqueia se falta autorização/aprovação ou se há credencial prestes a ir pro git. **A garantia de compliance vive no runtime (§10)**, porque o run real (cron/Actions) não passa por hook. O hook resolve o interpretador com shim `py -3`→`python3`→`python` e **falha FECHADO** se nenhum existir; depende do fix de PATH já aplicado.
+
+## 9. Fluxo end-to-end
+
+```
+/scrape-init
+  → entender alvo (URL, objetivo, precisa auth?, precisa país?, precisa agendar?, volume?)
+  → gate de compliance (robots.txt + declaração de autorização + piso de rate-limit
+                        → grava .scrape-authorization.json válido, §10.1)
+  → escolhe runtime (Local / Actions / promoção a VM), ver §5
+  → scaffold do projeto a partir dos templates (Claude inspeciona uma página e adapta
+                        selectors/endpoints; para geo/auth configura proxy e captura de sessão)
+  → canary (--limit 5 + 1 página de paginação, valida parse E navegação de páginas)
+  → RUN-PLAN (escopo, ETA, custo, riscos → mitigações, autorização, assinatura; PDF com fallback)
+    → aprovação (se o projeto exigir, §10.1)
+  → run completo (Local na hora; Actions faz deploy do workflow + secret + cron + upload-artifact
+                  + smoke_test por chunk que para se a taxa de parse cair — drift de selector)
+  → normalize (registro canônico + exports/)
+  → auditor (Opus xhigh; workflow multi-agente quando há riscos)
+  → handoff para skill de objetivo (Camada 2)
+```
+
+## 10. Segurança e compliance
+
+**Enforcement em runtime (a garantia real).** `scrape.py` e o workflow do Actions validam o `.scrape-authorization.json` **no início e por chunk**: existência, `expires_at` não vencido, `target_domain` bate com a URL, `rate_limit_floor` presente e respeitado, e `robots_status` compatível com a matriz abaixo. Falha → aborta non-zero. Reusa o `smoke_test.py` para não duplicar lógica. O hook do Claude Code é camada extra.
+
+### 10.1 Schema do `.scrape-authorization.json`
+```
+target_domain          (match exato do host; runtime rejeita divergência)
+authorization_type     (public_competitor | contracted_partner | own_account)
+approver, approved_at, expires_at
+rate_limit_floor       (req/s mínimo respeitado; validado como campo, não parseando o script)
+robots_status          (allowed | disallowed)
+robots_override_ref    (obrigatório se robots_status=disallowed E type=contracted_partner)
+requires_approval      (bool; se true, exige .scrape-approval.json com hash do run-plan)
+scope                  (o que pode ser capturado; base de consentimento)
+```
+"Válido" = todos os campos presentes, `expires_at` futuro, `target_domain` batendo. O gate é **auto-declaração por design** (threat model interno); a camada de aprovação (`.scrape-approval.json`, com hash do PDF do run-plan) endurece projetos sensíveis.
+
+### 10.2 Precedência robots.txt × autorização
+| authorization_type | robots.txt `Disallow` no alvo |
+|---|---|
+| `public_competitor` | **bloqueio duro** (runtime aborta) |
+| `contracted_partner` | override permitido **se** `robots_override_ref` referencia o contrato |
+| `own_account` | override permitido (é a própria conta) |
+robots.txt é condição verificada no runtime **e** no hook.
+
+### 10.3 Camadas
+1. **Baseline sempre-ligado** — piso de rate-limit, UA realista, `.gitignore` que bloqueia só `data/`/tokens/credenciais, segredos via secret do Actions (ou metadata GCP **no caminho VM**), repo privado para dado sensível, scanner tipo `gitleaks` no diff staged (detecção de credencial não depende de adivinhação do hook).
+2. **Checklist guiado** — a skill explica riscos de ToS e ban, pergunta o `authorization_type`.
+3. **Enforcement em runtime + hook** — descrito acima.
+
+### 10.4 Ciclo de vida do secret de sessão
+TTL com alerta no `daily_refresh.py`; revogação no offboarding; **GitHub Actions Environments com required reviewers** para os secrets sensíveis; conta de scraping **dedicada e de baixo privilégio** no site-alvo; `scope`/consentimento registrados na autorização.
+
+### 10.5 Dados pessoais e retenção
+Se o alvo for site UK/EU ou expuser PII: minimização de PII no `normalize` (não persistir campos pessoais desnecessários), base legal registrada na autorização, e política de retenção/acesso/descarte dos `exports/` versionados (definida em `references/canonical-record.md` + README do projeto). LGPD/GDPR é responsabilidade da org; o plugin dá o hook para cumprir.
+
+## 11. Estratégia de execução (models / efforts / workflows)
+
+Documentada em `references/execution-strategy.md`. **Nunca usar Haiku** (política JEM); o tier econômico é **Sonnet 5 `medium`**.
+
+**Fronteira de infra por runtime (importante):**
+- **Local runtime** — a normalização via LLM roda como **subagents/workflows do Claude Code** (assinatura; prompt caching aplica; **sem Batch**).
+- **Actions runtime (desassistido)** — não há Claude Code rodando; a normalização é um **passo Python (`build_dataset.py`) que chama a Anthropic API com `ANTHROPIC_API_KEY`** (secret). Aqui **Batch API (−50%) + caching aplicam**. A API key é pré-requisito de org (§19).
+
+| Tarefa | Model | Effort | Thinking | Orquestração |
+|---|---|---|---|---|
+| Parsing puramente mecânico | **Código determinístico (sem LLM)** — Opus infere o parser 1× | — | — | — |
+| Extração semântica simples em massa | **Sonnet 5** | medium | off | Local: subagents · Actions: script + **Batch** + caching |
+| Normalização com julgamento (categoria, match, qualidade) | **Sonnet 5** | medium | **on** | Local: subagents (pipeline) · Actions: script + **Batch** + caching |
+| Inferência de parser / auditoria | **Opus** | **xhigh** | on | workflow quando há riscos (dimensões em paralelo + verificação adversarial) |
+| Comparar nossos × concorrentes (Camada 2) | **Sonnet 5 / Opus** | medium/high | on | workflow (fan-out por produto) |
+
+**Levers de custo:** **Batch API (−50%) só no runtime Actions** (script + API key); prompt caching em qualquer runtime; thinking off no mecânico/extração simples (on no julgamento). Nota de billing: Batch exige API key + billing de API; a assinatura do Claude Code (runtime Local) não roteia por Batch. Controláveis: model/effort/thinking por skill/command/subagent/workflow-agent; na sessão principal o orquestrador recomenda/anuncia; escala para workflow multi-agente quando há riscos, respeitando o opt-in.
+
+## 12. Estratégia cross-platform
+
+Helpers OS-específicos são **drivers Python stdlib cross-platform** (mais Playwright no caminho auth) que o Claude executa igual em Windows e mac:
+
+| Peça | Antes (mac) | Agora (cross-platform) |
+|---|---|---|
+| Captura de sessão de auth | `strings`+bash lendo leveldb | **Playwright `storage_state`** (login via browser controlado; NÃO lê leveldb — inviável no Windows por App-Bound Encryption v127+) |
+| daily_refresh / pull / watch / render_pdf | `.sh` | drivers Python |
+| Hooks | bash | Python invocado por comando com shim de interpretador (`py -3`→`python3`→`python`), fail-closed |
+| Agendamento local | launchd | Task Scheduler no Win / launchd no mac — minimizado, pois o agendamento do run fica no Actions/GCP |
+| Render do run-plan | Chrome headless (path fixo) | `render_pdf.py` descobre o binário do Chrome; fallback HTML/Markdown se não achar (aprovação nunca trava) |
+
+## 13. Estrutura de projeto gerada (scaffold padrão)
+
+```
+scrape-<site>/
+├── README.md · .gitignore · .scrape-authorization.json · config.json
+├── scripts/  (scrape.py, smoke_test.py, notify.py, build_dataset.py)
+├── .github/workflows/  (só no runtime Actions)
+├── vm/         (só no fallback VM)
+├── state/cursor.json     (checkpoint de retomada — versionado, NÃO gitignored)
+├── exports/    (products.csv, wiki/**.md, scrape_manifest.json — entregável, versionado)
+├── data/       (cache cru HTML/JSON — gitignored)
+└── docs/  (DAILY.md, AUDIT.md, run-plan.pdf)
+```
+`.gitignore` bloqueia **apenas** `data/`, tokens e credenciais. `exports/`, `state/` e `wiki/` são versionados (leves; resolve a contradição "entregável vs gitignored").
+
+## 14. Estrutura do repo do plugin
+
+```
+jem-product-scrape-kit-intel/
+├── .claude-plugin/plugin.json   (name, version, description, author, keywords — espelha ahrefs-intel)
+├── skills/{scrape-onboarding,scrape-product-catalog,scrape-compliance-gate,
+│           scrape-normalize-export,scrape-run-plan}/SKILL.md
+├── references/*.md
+├── assets/{scraper-template,drivers,vm,github-actions,project-skeleton,
+│           run-plan-template,it-request}/
+├── agents/scrape-run-auditor.md
+├── hooks/{hooks.json,scripts/*.py}
+├── commands/{scrape-setup.md,scrape-init.md,scrape-status.md}
+└── README.md · CHANGELOG.md
+```
+Segue a convenção do plugin `ahrefs-intel` (descrições ricas com triggers e exemplos, `when_to_use`, `allowed-tools`, `model`). O `plugin.json` é especificado no plano espelhando o `ahrefs-intel`.
+
+## 15. Testes e qualidade
+
+Escada de validação em cada scrape: **canary (parse + paginação) → `smoke_test.py` por chunk (fail-close abaixo de um piso de taxa de parse — pega drift de selector) → `scrape-run-auditor`**. O run-plan documenta cobertura esperada; o auditor confere a real e o `notify.py` alerta em falha/travamento/token-expirado/cobertura-baixa (canal default = issue no repo). Terminologia unificada: o "smoke-gate" É o `smoke_test.py`. Para o plugin em si: os agentes `plugin-validator` e `skill-reviewer` (do toolchain `plugin-dev`) antes de publicar.
+
+## 16. Roadmap Camada 2 (interface pronta, build depois)
+
+`product-price-analysis` (usa `variants[]/prices[]` + snapshots datados por `scraped_at` para histórico) · `catalog-quality-compare` (integra `gmc-quality`) · `product-create-shopify` / `product-create-magento` (integram os agentes shopify e o NetSuite ERP). Cada uma consome o registro canônico (respeitando `schema_version`) e vira seu próprio ciclo spec → plano → implementação.
+
+## 17. Fora de escopo (YAGNI)
+
+- Claude Code na web / sessões remote.
+- Build das skills da Camada 2 nesta v1 (só a interface).
+- Cloudflare Workers como runtime de primeira classe (fica como referência/roadmap).
+- Suporte a Linux desktop além do necessário (foco Windows + mac).
+- Login automatizado com credenciais cruas armazenadas (preferimos captura de sessão local; credencial crua só se a org aceitar o risco, fora de v1).
+
+## 18. Riscos e mitigações
+
+| Risco | Mitigação |
+|---|---|
+| Usuário não-técnico trava no setup Windows | Onboarding em 2 fases + kit pra TI + check verde antes de liberar; PATH escrito pelo setup |
+| Ban da conta em site autenticado | Pacing humanizado, horário comercial, single-thread, checkpoint, gate de autorização, conta dedicada de baixo privilégio |
+| Token de sessão expira em run auth+agendado | Ritual diário de refresh (§5.1); fail-closed no expiro; promoção a VM quando re-login é interativo |
+| Custo de LLM em volume | Código determinístico onde dá + Batch (só Actions) + caching + thinking off no mecânico |
+| Dados sensíveis expostos no GitHub | Repo privado obrigatório; `.gitignore` bloqueia cru/segredos; scanner de secrets no diff |
+| Runs de Actions atrasando/caindo | Idempotência + retomada do `state/cursor.json` |
+| **ToS do GitHub Actions (risco aceito)** | Posição da org/jurídico; roteamento sensível a volume → cargas pesadas em VM/Cloudflare por padrão |
+| Drift de selector em run desassistido | `smoke_test.py` por chunk fail-close + `notify.py` + re-scaffold assistido |
+| Aquisição de proxy sem dono | TI provisiona conta JEM compartilhada 1× (§19); credenciais como secret gerenciado |
+| Interpretador Python ausente vira fail-open no hook | Shim de interpretador + fail-closed explícito |
+| Fundação GCP ausente no fallback VM | Pré-requisito de org/TI declarado (§19) |
+| LGPD/GDPR (site UK/EU, dado de concorrente) | Minimização de PII + base legal na autorização + política de retenção |
+
+## 19. Pré-requisitos de org/TI (não são do usuário)
+
+- **Renomear o repo** `jem-aget-product-scap-plugin` → `jem-product-scrape-kit-intel` (ou fixar o nome canônico no `plugin.json` e manter o dir) — 1ª tarefa do plano.
+- **Conta de proxy JEM compartilhada** (residencial UK e outros países conforme a demanda), provisionada 1× pela TI; credenciais entregues como secret gerenciado (não cada usuário contrata).
+- **`ANTHROPIC_API_KEY` + billing de API** — necessária para normalização via LLM no **runtime Actions** (Batch). Runtime Local usa a assinatura, não precisa.
+- **Projeto GCP + billing + IAM** — só se/quando o fallback VM for usado; provisionado pela TI (usuário não tem GCP).
+- **Toolchain via TI** — Git, GitHub Desktop, `gh`, Python 3, Playwright+Chromium (caminho auth), `gcloud` (só VM).
+
+## 20. Critérios de sucesso
+
+- Uma pessoa não-técnica, num Windows corporativo, roda `/scrape-setup` uma vez e depois `/scrape-init` para criar e executar um scrape completo, sem escrever código.
+- O scrape produz o registro canônico + exports recuperáveis (link do artifact/commit ou `pull.py`), com relatório de cobertura do auditor.
+- Nenhuma credencial vai para o git; nenhum scrape começa sem autorização declarada; o enforcement vive no runtime, não só no hook.
+- O motor atende: público local; público/geo/agendado na nuvem via Actions; autenticado dentro de uma janela via Actions; e escala para VM/Cloudflare nos casos duros — com o custo e os pré-requisitos de cada caminho explícitos.
+
+## 21. Rastreabilidade do review (achado → resolução)
+
+| # | Achado | Resolvido em |
+|---|---|---|
+| 1 | Gate não cobre a execução real | §8, §10 (enforcement em runtime; hook = defesa-em-profundidade) |
+| 2/5/37b | Refresh de token auth+agendado sem mecanismo | §5.1 (ciclo de vida da sessão) + §6 (`gh` no toolchain) |
+| 3 | Recuperação de saídas no Actions + contradição `wiki/` gitignored | §5 (upload-artifact/exports), §13 (`exports/`/`wiki/` versionados) |
+| 4 | Captura de token via leveldb inviável no Windows | §3, §12 (Playwright `storage_state`), §8 (`auth_capture.py`) |
+| 6 | Batch API vs subagents; API key/billing | §11 (fronteira por runtime), §19 (API key) |
+| 7 | ToS do Actions como padrão | §5 (risco aceito + roteamento por volume), §18 |
+| 8 | Proxy sem dono | §19 (TI provisiona), §18 |
+| 9/22 | GCP não provisionado | §5, §19 (pré-requisito de TI) |
+| 10 | Precedência robots.txt × autorização | §10.2 (matriz) |
+| 11 | "Válido" indefinido; gate auto-servido | §10.1 (schema) |
+| 12 | Ciclo de vida do secret | §10.4 |
+| 13 | Interpretador dos hooks | §8, §12 (shim + fail-closed) |
+| 14 | Detecção rate-limit/credencial | §10.1 (campo no config), §10.3 (gitleaks) |
+| 15 | Drift de selector | §9, §15, §18 (`smoke_test` por chunk) |
+| 16 | Monitoramento de runs | §15 (canal issue + gatilhos) |
+| 17 | Versionamento de schema | §7 (`schema_version`) |
+| 18 | Render de PDF cross-platform | §8, §12 (`render_pdf.py` + fallback) |
+| 19/21 | `gcloud`/`metadata GCP` incondicionais | §6, §10.3 (marcados como só-VM) |
+| 20 | Tier `low` vs `medium` | §2, §11 (reconciliado para `medium`) |
+| 23/24 | Retenção de dados; LGPD/GDPR | §10.5 |
+| 25/26/41 | `price{}` único; chave de identidade; formatos | §7 (`variants[]/prices[]`, `product_id`, formatos) |
+| 27/28/38 | Local do estado; fonte do `/scrape-status` | §13 (`state/cursor.json`), §8 |
+| 29 | `plugin.json` não especificado | §14, §19 |
+| 30 | Nome vs diretório | §1, §19 (renomear) |
+| 31 | Fix de PATH manual | §4, §6 (escrito pelo setup) |
+| 32 | Typo `scrap-` | §13 (`scrape-<site>`) |
+| 33 | Canary não valida paginação | §9 (canary + paginação) |
+| 34 | Limites do Cloudflare | §5 (nota + plano pago) |
+| 35 | `HTTPS_PROXY` não cobre o browser | §12 (proxy no launch do Playwright), `geo-proxy.md` |
+| 36/37 | Marcador de aprovação | §10.1 (`.scrape-approval.json` + hash) |
+| 39 | `smoke-gate` vs `smoke_test.py` | §15 (unificado) |
+| 40 | Origem de `plugin-validator`/`skill-reviewer` | §15 (toolchain plugin-dev) |
+| 42 | Playwright vs zero-dep | §3 (zero-dep = núcleo HTTP; Playwright declarado) |
