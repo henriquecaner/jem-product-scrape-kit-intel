@@ -10,8 +10,8 @@ _WS = re.compile(r"\s+")
 def clean_text(html_text):
     if not html_text:
         return ""
-    text = _TAG.sub(" ", html_text)
-    text = html.unescape(text)
+    text = html.unescape(html_text)
+    text = _TAG.sub(" ", text)
     return _WS.sub(" ", text).strip()
 
 

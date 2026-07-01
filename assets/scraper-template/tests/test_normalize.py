@@ -15,6 +15,12 @@ def test_clean_text_unescapes_and_strips_tags():
     assert clean_text("<p>Fire &amp; smoke</p>  ") == "Fire & smoke"
 
 
+def test_clean_text_strips_entity_encoded_tags():
+    result = clean_text("Safe &lt;script&gt;alert(1)&lt;/script&gt; end")
+    assert "<" not in result and ">" not in result
+    assert result == "Safe alert(1) end"
+
+
 def test_normalize_maps_core_fields():
     rec = _norm({"sku": "A1", "name": "Widget", "brand": "Acme",
                  "breadcrumbs": ["Fire", "Detectors"], "description": "<b>hi</b>"})
