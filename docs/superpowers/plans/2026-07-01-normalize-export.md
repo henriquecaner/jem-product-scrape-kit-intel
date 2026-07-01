@@ -566,7 +566,7 @@ CSV_COLUMNS = [
 
 def write_csv(records, path):
     buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+    writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS, extrasaction="ignore", lineterminator="\n")
     writer.writeheader()
     count = 0
     for rec in records:

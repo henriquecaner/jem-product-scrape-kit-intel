@@ -15,6 +15,25 @@ def _rec(pid, name, price):
     )
 
 
+def test_write_csv_no_doubled_carriage_returns(tmp_path):
+    out = tmp_path / "products.csv"
+    write_csv([_rec("A1", "Widget", 9.5), _rec("A2", "Gadget", 12.0)], out)
+    text = out.read_text(encoding="utf-8")
+    assert "\r\r" not in text
+    with out.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 2
+
+
+def test_write_csv_utf8_non_ascii_roundtrips(tmp_path):
+    out = tmp_path / "products.csv"
+    name = "Sirène d'alarme ÀÉÎ"
+    write_csv([_rec("A1", name, 9.5)], out)
+    with out.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert rows[0]["name"] == name
+
+
 def test_write_csv_writes_rows_and_returns_count(tmp_path):
     out = tmp_path / "exports" / "products.csv"
     n = write_csv([_rec("A1", "Widget", 9.5), _rec("A2", "Gadget", 12.0)], out)
