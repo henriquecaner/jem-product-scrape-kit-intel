@@ -1,0 +1,62 @@
+import pytest
+
+from jemscrape.canonical import CanonicalRecord, SCHEMA_VERSION
+
+
+def _rec(**over):
+    base = dict(
+        source_site="ex.com", source_url="https://ex.com/p/1",
+        scraped_at="2026-07-01T00:00:00+00:00", authorization_ref="auth-1",
+        product_id="A1", sku="A1", name="Widget", brand="Acme",
+        description_raw="<b>raw</b>", description_clean="raw",
+        breadcrumbs=["Fire", "Detectors"], division="Fire", category_path="Fire > Detectors",
+        images=["https://ex.com/i/1.jpg"], specs={"weight": "2kg"},
+        prices=[{"value": 21.86, "currency": "GBP", "source": "jem_band", "band": "PLE-J015"}],
+        list_price=19.67, cost_price=None,
+        variants=[], stock={"total": 5, "by_location": {}},
+        attachments=[], related=[], raw_ref="data/a1.html",
+    )
+    base.update(over)
+    return CanonicalRecord(**base)
+
+
+def test_schema_version_default():
+    assert _rec().schema_version == SCHEMA_VERSION == "1.0"
+
+
+def test_validate_passes_on_complete_record():
+    _rec().validate()  # no raise
+
+
+def test_validate_requires_product_id():
+    with pytest.raises(ValueError):
+        _rec(product_id="").validate()
+
+
+def test_validate_requires_name():
+    with pytest.raises(ValueError):
+        _rec(name="").validate()
+
+
+def test_to_row_flattens_expected_columns():
+    row = _rec().to_row()
+    assert row["product_id"] == "A1"
+    assert row["breadcrumb"] == "Fire > Detectors"
+    assert row["best_price"] == 21.86
+    assert row["price_band"] == "PLE-J015"
+    assert row["price_source"] == "jem_band"
+    assert row["image_url"] == "https://ex.com/i/1.jpg"
+    assert row["total_stock"] == 5
+    assert row["schema_version"] == "1.0"
+
+
+def test_to_row_blank_when_no_price_or_image():
+    row = _rec(prices=[], images=[]).to_row()
+    assert row["best_price"] == ""
+    assert row["price_band"] == ""
+    assert row["image_url"] == ""
+
+
+def test_to_dict_is_json_serializable():
+    import json
+    json.dumps(_rec().to_dict())  # no raise
