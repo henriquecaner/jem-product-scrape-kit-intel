@@ -20,10 +20,11 @@ def build_pacer(cfg):
     return Pacer(min_delay=lo, max_delay=hi, floor=floor)
 
 
-def preflight(config_path, authz_path, target_url, now):
+def preflight(config_path, authz_path, now):
     cfg = load_config(config_path)
     validate_config(cfg)
     auth = load_authorization(authz_path)
+    target_url = f"https://{cfg['target_domain']}/"
     validate_authz(auth, target_url, now)
     return cfg, auth
 
@@ -34,11 +35,8 @@ def main(argv=None):
     parser.add_argument("--reparse", action="store_true", help="reparse cache without fetching")
     args = parser.parse_args(argv)
 
-    cfg = load_config(CONFIG_PATH)
-    validate_config(cfg)
-    target_url = f"https://{cfg['target_domain']}/"
     try:
-        preflight(CONFIG_PATH, AUTHZ_PATH, target_url, datetime.now(timezone.utc))
+        cfg, _auth = preflight(CONFIG_PATH, AUTHZ_PATH, datetime.now(timezone.utc))
     except Exception as exc:  # fail-closed: no run without a valid gate
         print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
         return 2

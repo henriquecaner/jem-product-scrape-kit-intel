@@ -3,18 +3,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from jemscrape.config import load_config, validate_config
-from jemscrape.authz import load_authorization, validate as validate_authz
+from scrape import preflight
 
 HERE = Path(__file__).resolve().parent
 
 
 def run_smoke(config_path, authz_path, now):
     try:
-        cfg = load_config(config_path)
-        validate_config(cfg)
-        auth = load_authorization(authz_path)
-        validate_authz(auth, f"https://{cfg['target_domain']}/", now)
+        preflight(config_path, authz_path, now)
     except Exception as exc:
         print(f"[smoke] FAIL: {exc}", file=sys.stderr)
         return 1

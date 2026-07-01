@@ -32,7 +32,7 @@ def _write(tmp_path):
 
 def test_preflight_ok_returns_cfg_and_auth(tmp_path):
     cp, ap = _write(tmp_path)
-    cfg, auth = preflight(cp, ap, "https://example.com/", NOW)
+    cfg, auth = preflight(cp, ap, NOW)
     assert cfg["target_domain"] == "example.com"
     assert auth.approver == "henrique"
 
@@ -43,13 +43,20 @@ def test_preflight_blocks_expired_authorization(tmp_path):
     data["expires_at"] = "2026-06-01T00:00:00+00:00"
     ap.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(AuthorizationError):
-        preflight(cp, ap, "https://example.com/", NOW)
+        preflight(cp, ap, NOW)
 
 
 def test_preflight_blocks_missing_authorization(tmp_path):
     cp, _ = _write(tmp_path)
     with pytest.raises(AuthorizationError):
-        preflight(cp, tmp_path / "nope.json", "https://example.com/", NOW)
+        preflight(cp, tmp_path / "nope.json", NOW)
+
+
+def test_preflight_blocks_bad_config(tmp_path):
+    cp, ap = _write(tmp_path)
+    cp.write_text("{bad json", encoding="utf-8")
+    with pytest.raises(ConfigError):
+        preflight(cp, ap, NOW)
 
 
 def test_build_pacer_uses_floor(tmp_path):
