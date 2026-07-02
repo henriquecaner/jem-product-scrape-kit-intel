@@ -1,6 +1,7 @@
 # tests/test_signals.py
-from jemscrape.signals import detect_render, detect_auth, detect_antibot
+from jemscrape.signals import detect_render, detect_auth, detect_antibot, analyze_shape
 from jemscrape.fetch import Probe
+from jemscrape.normalize import normalize
 
 
 def test_detect_render_server_rendered_page():
@@ -92,3 +93,30 @@ def test_detect_antibot_geo_block_body():
 def test_detect_antibot_clean():
     out = detect_antibot(Probe(status=200, headers={}, body="<h1>Widget</h1>", final_url="https://x/p"))
     assert out["blocked"] is False and out["kind"] is None
+
+
+def _rec(pid, name, prices=None, images=None, breadcrumbs=None):
+    return normalize(
+        {"product_id": pid, "name": name, "sku": pid,
+         "prices": prices or [], "images": images or [], "breadcrumbs": breadcrumbs or []},
+        source_site="x", source_url="https://x/p", scraped_at="t",
+        authorization_ref="a", raw_ref="r")
+
+
+def test_analyze_shape_empty():
+    out = analyze_shape([])
+    assert out["count"] == 0
+
+
+def test_analyze_shape_coverage_and_bands_and_collisions():
+    records = [
+        _rec("A1", "Widget", prices=[{"band": "trade", "value": 10}], images=["u"], breadcrumbs=["Fire"]),
+        _rec("A1", "Widget v2", prices=[{"band": "list", "value": 12}]),   # same product_id -> collision
+        _rec("B2", "Gadget"),                                              # no price/image/breadcrumb
+    ]
+    out = analyze_shape(records)
+    assert out["count"] == 3
+    assert out["coverage"]["name"] == 1.0
+    assert out["coverage"]["price"] == round(2 / 3, 3)
+    assert out["price_bands"] == ["list", "trade"]
+    assert out["variant_collisions"] == 1

@@ -83,3 +83,36 @@ def detect_antibot(probe):
             kind = kind or "geo"
             break
     return {"blocked": bool(signals), "kind": kind, "signals": signals}
+
+
+def analyze_shape(records):
+    n = len(records)
+    if n == 0:
+        return {"count": 0, "coverage": {}, "price_bands": [],
+                "variant_collisions": 0, "stock_by_location": 0}
+
+    def frac(pred):
+        return round(sum(1 for r in records if pred(r)) / n, 3)
+
+    coverage = {
+        "name": frac(lambda r: bool(r.name)),
+        "sku": frac(lambda r: bool(r.sku)),
+        "product_id": frac(lambda r: bool(r.product_id)),
+        "price": frac(lambda r: bool(r.prices)),
+        "image": frac(lambda r: bool(r.images)),
+        "breadcrumbs": frac(lambda r: bool(r.breadcrumbs)),
+    }
+    bands = sorted({p.get("band") for r in records for p in r.prices
+                    if isinstance(p, dict) and p.get("band")})
+    seen = {}
+    for r in records:
+        seen[r.product_id] = seen.get(r.product_id, 0) + 1
+    collisions = sum(1 for count in seen.values() if count > 1)
+    stock_by_loc = sum(1 for r in records if r.stock.get("by_location"))
+    return {
+        "count": n,
+        "coverage": coverage,
+        "price_bands": bands,
+        "variant_collisions": collisions,
+        "stock_by_location": stock_by_loc,
+    }
