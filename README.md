@@ -11,6 +11,9 @@ Novo por aqui? Comece pelos guias:
 - [O que é o plugin](docs/OVERVIEW.md) — visão geral pra quem não conhece o projeto.
 - [Setup da máquina](docs/SETUP.md) — passo a passo Windows e Mac, antes de começar.
 - [Primeiro scrape](docs/GETTING-STARTED.md) — do zero ao primeiro catálogo.
+- [Glossário e FAQ](docs/GLOSSARY.md) — termos em linguagem simples e perguntas comuns.
+- [Compliance pra quem aprova](docs/FOR-APPROVERS.md) — a matriz de robots, o plano do run, quando exige aprovação.
+- [Guia do desenvolvedor](docs/DEVELOPING.md) — pra quem for estender o motor ou adicionar um site.
 
 Referência técnica: o design em [`docs/superpowers/specs/`](docs/superpowers/specs/) e os planos em [`docs/superpowers/plans/`](docs/superpowers/plans/).
 
