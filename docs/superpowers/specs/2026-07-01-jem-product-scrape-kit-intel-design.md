@@ -3,7 +3,7 @@
 **Data:** 2026-07-01
 **Autor:** Henrique Caner (JEM Systems) + Claude Code
 **Status:** Aprovado para plano de implementação
-**Revisão:** rev5 — §5.3 especifica a **implementação do runtime Actions (Plano 5)**: workflow do pipeline determinístico no cron, com gate de compliance no runtime e o mecanismo secrets→arquivos pros gates gitignored; Batch/API é hook futuro (achado #45). rev4 dividiu o Plano 3 em 3a (browser adapter, §5.2) + 3b deferido (#44). rev3 adicionou o Warm-Up Lap + review de sinal verde (§9.1, #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
+**Revisão:** rev6 — §6.1 especifica a **implementação do onboarding (Plano 6)**: núcleo testável (green-check + kit-TI + fix de PATH + CLI `scrape_setup`) + assets (`.gitignore` do scaffold, kit-TI) + driver `deploy_actions`; skill markdown + commands deferidos ao Plano 7 (achado #46). rev5 §5.3 runtime Actions (#45). rev4 dividiu o Plano 3 em 3a (§5.2) + 3b deferido (#44). rev3 Warm-Up Lap + review de sinal verde (§9.1, #43). rev2 deep review multi-agente (49 achados). Rastreabilidade no §21.
 
 ---
 
@@ -141,6 +141,24 @@ Como o usuário cria contas sozinho mas depende da TI para instalar software, o 
 - **Check verde final** que só libera o `/scrape-init` quando tudo (incl. `gh auth status`, Playwright, PATH) está OK
 
 Pré-requisitos que **não** são do usuário e sim da org/TI (ver §19): a conta de proxy compartilhada, a `ANTHROPIC_API_KEY` (para normalização via LLM no Actions), e — se for usar VM — o projeto GCP. Se tudo já estiver instalado/provisionado, pula direto para a Fase B.
+
+### 6.1 Implementação do onboarding (Plano 6)
+
+O núcleo testável do onboarding é detecção + configuração; a orquestração (skill `scrape-onboarding`) é markdown que o `plugin.json` carrega — authorada no Plano 7 junto do empacotamento, pra não shipar markdown inerte.
+
+**Testável (stdlib, TDD):**
+- `jemscrape/toolchain.py` — registry de ferramentas (git, `gh`, python3, Playwright, Chrome; winget ID + porquê + opcional?), `check_tools(*, which)` → relatório present/missing, `render_it_kit(report)` → o "kit para a TI" (§6 Fase A: doc + comandos winget silenciosos das ferramentas que faltam).
+- `jemscrape/settings_patch.py` — `patch_claude_settings(path, *, env)` mescla PATH/env no `~/.claude/settings.json` sem clobber (fix de PATH do Desktop, §6 Fase B; escrita atômica).
+- `scrape_setup.py` (root CLI, backing do `/scrape-setup`) — roda o check verde, aplica o fix de PATH, imprime relatório + kit-TI se faltar algo, retorna non-zero se não estiver pronto (o check verde que trava o `/scrape-init`, §6 Fase B).
+
+**Assets:**
+- `assets/project-skeleton/.gitignore` — bloqueia `data/` + gate files (`.scrape-authorization.json`, `.scrape-warmup.json`) + tokens/secrets; **NÃO** bloqueia `exports/`/`state/`/`wiki/` (versionados, §5/§13). Resolve o blocker herdado do review do Plano 5 (o `.gitignore` do repo-do-plugin não vai no scaffold).
+- `assets/it-request/README.md` — template do pedido pra TI (toolchain + proxy + `ANTHROPIC_API_KEY`; nota de admin no Windows, §19).
+
+**Driver (guardado):**
+- `drivers/deploy_actions.py` — fecha o deploy adiado do Plano 5: `build_secret_commands(gate_files)` → sequência `gh secret set <NAME>` (segredo via stdin do arquivo de gate, **nunca** no argv) pros dois gates; + snippet de colocar o workflow em `.github/workflows/` e commitar. Builder testável (constrói comandos como dado); execução fina.
+
+**Deferido:** drivers de auth (daily_refresh/pull/watch — caminho 3b) e de run-plan (render_pdf — §8, não construído); a skill `scrape-onboarding` (markdown) + `/scrape-setup`/`/scrape-init` (commands) entram no Plano 7 (empacotamento) junto do `plugin.json`.
 
 ## 7. Registro Canônico JEM
 
@@ -433,3 +451,4 @@ Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais +
 | 43 | Warm-up lap obrigatório + review de sinal verde antes do run full (sessão 2026-07-02: ADI = SPA/JS descoberto só na tentativa) | §9.1, §8 (skill `scrape-warmup` + asset `warmup.py`), §11 (Opus 4.8 `xhigh` revisor + advisor Sonnet 5) |
 | 44 | Plano 3 dividido: render por browser (3a, o bloqueio real = SPA/JS) construído; auth/token (3b) deferido YAGNI (usuário sem login) | §5.2 (`jemscrape/browser.py` + `drivers/playwright_render.py` + `fetch_mode`), §5.1 (3b deferido), §3 (Playwright = dep opcional) |
 | 45 | Runtime Actions (Plano 5): workflow determinístico no cron + gate no runtime + secrets→arquivos pros gates gitignored; Batch/API = hook futuro (normalize v1 é determinística) | §5.3 (`actions_setup.py` + `jemscrape/secrets_io.py` + `notify.py` + `assets/github-actions/scrape.yml`), §10 (gate no workflow), §11 (Batch adiado) |
+| 46 | Onboarding (Plano 6): núcleo testável (green-check + kit-TI + fix de PATH + CLI) + assets (scaffold `.gitignore`, kit-TI) + driver deploy_actions; skill/commands → Plano 7 | §6.1 (`jemscrape/toolchain.py` + `jemscrape/settings_patch.py` + `scrape_setup.py` + `assets/project-skeleton/.gitignore` + `assets/it-request/` + `drivers/deploy_actions.py`), §6 (2 fases) |
