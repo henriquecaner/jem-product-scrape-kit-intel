@@ -1,0 +1,71 @@
+import json
+from datetime import datetime, timezone, timedelta
+
+import warmup
+from jemscrape.fetch import Probe
+
+SERVER_BODY = "<html><body><h1>Widget</h1>" + ("<p>d </p>" * 40) + "</body></html>"
+
+
+def _write_valid_gate_files(tmp_path):
+    now = datetime.now(timezone.utc)
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({
+        "target_domain": "example.com", "runtime": "local",
+        "user_agent": "UA", "rate_limit_floor_seconds": 8,
+    }), encoding="utf-8")
+    authz = tmp_path / ".scrape-authorization.json"
+    authz.write_text(json.dumps({
+        "target_domain": "example.com", "authorization_type": "public_competitor",
+        "approver": "H", "approved_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=1)).isoformat(),
+        "rate_limit_floor_seconds": 8, "robots_status": "allowed",
+        "robots_override_ref": None, "requires_approval": False, "scope": "https://example.com/",
+    }), encoding="utf-8")
+    return cfg, authz
+
+
+def test_warmup_cli_success_writes_report(tmp_path):
+    cfg, authz = _write_valid_gate_files(tmp_path)
+    sample = tmp_path / "sample.json"
+    sample.write_text(json.dumps(["https://example.com/product/1"]), encoding="utf-8")
+    out = tmp_path / ".scrape-warmup-report.json"
+
+    def fake_probe(url):
+        return Probe(status=200, headers={}, body=SERVER_BODY, final_url=url)
+
+    def fake_parse(body, url):
+        return {"product_id": "A1", "name": "Widget", "sku": "A1"}
+
+    rc = warmup.main(
+        ["--sample", str(sample), "--config", str(cfg), "--authz", str(authz), "--out", str(out)],
+        probe_fn=fake_probe, parse_fn=fake_parse)
+    assert rc == 0
+    assert out.exists()
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["fetched"] == 1
+
+
+def test_warmup_cli_blocked_by_gate_returns_2(tmp_path, capsys):
+    # No authz file -> compliance gate fails closed.
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({
+        "target_domain": "example.com", "runtime": "local",
+        "user_agent": "UA", "rate_limit_floor_seconds": 8}), encoding="utf-8")
+    sample = tmp_path / "sample.json"
+    sample.write_text(json.dumps(["https://example.com/p"]), encoding="utf-8")
+    rc = warmup.main(
+        ["--sample", str(sample), "--config", str(cfg),
+         "--authz", str(tmp_path / "missing.json"), "--out", str(tmp_path / "r.json")],
+        probe_fn=lambda u: None, parse_fn=lambda b, u: None)
+    assert rc == 2
+    assert "BLOCKED" in capsys.readouterr().err
+
+
+def test_warmup_cli_missing_sample_returns_2(tmp_path):
+    cfg, authz = _write_valid_gate_files(tmp_path)
+    rc = warmup.main(
+        ["--sample", str(tmp_path / "nope.json"), "--config", str(cfg),
+         "--authz", str(authz), "--out", str(tmp_path / "r.json")],
+        probe_fn=lambda u: None, parse_fn=lambda b, u: None)
+    assert rc == 2
