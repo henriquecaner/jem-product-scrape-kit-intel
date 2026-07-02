@@ -39,6 +39,18 @@ def require_warmup(warmup_path, target_url, now):
     validate_warmup(verdict, target_url, now)
 
 
+def build_fetcher(cfg, *, http_fetch, render_fn=None):
+    """Select the run fetcher by fetch_mode. Browser mode wraps a render_fn
+    (Playwright) into the runner's fetcher(url)->html contract; default is HTTP."""
+    if cfg.get("fetch_mode") == "browser":
+        from jemscrape.browser import make_browser_fetcher
+        if render_fn is None:
+            from drivers.playwright_render import render as render_fn
+        return make_browser_fetcher(render_fn)
+    user_agent = cfg["user_agent"]
+    return lambda url: http_fetch(url, user_agent=user_agent)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="JEM scraper")
     parser.add_argument("--limit", type=int, default=0, help="max URLs (0 = all)")
@@ -74,8 +86,7 @@ def main(argv=None):
     manifest = Manifest()
     pacer = build_pacer(cfg)
 
-    def fetcher(url):
-        return http_fetch(url, user_agent=cfg["user_agent"])
+    fetcher = build_fetcher(cfg, http_fetch=http_fetch)
 
     summary = run(urls=urls, parse_fn=parse, cache_dir=cache_dir, fetcher=fetcher,
                   pacer=pacer, cursor=cursor, manifest=manifest, reparse=args.reparse)
