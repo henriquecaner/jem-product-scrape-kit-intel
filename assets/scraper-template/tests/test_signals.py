@@ -36,6 +36,11 @@ def test_detect_auth_flags_403():
     assert out["auth_required"] is True
 
 
+def test_detect_auth_flags_401():
+    out = detect_auth(_probe(status=401))
+    assert out["auth_required"] is True
+
+
 def test_detect_auth_flags_login_redirect():
     out = detect_auth(_probe(final_url="https://x/account/login?next=/p"))
     assert out["auth_required"] is True
@@ -44,6 +49,24 @@ def test_detect_auth_flags_login_redirect():
 def test_detect_auth_flags_price_login_body():
     out = detect_auth(_probe(body="<div>Sign in to see price</div>"))
     assert out["auth_required"] is True
+
+
+_LOGIN_BODY_MARKERS = (
+    "sign in to see price",
+    "log in to view",
+    "please sign in",
+    "login required",
+    "member price",
+    'type="password"',
+)
+
+
+def test_detect_auth_flags_every_login_body_marker():
+    for marker in _LOGIN_BODY_MARKERS:
+        body = f"<div>prefix {marker} suffix</div>"
+        out = detect_auth(_probe(body=body))
+        assert out["auth_required"] is True, f"marker {marker!r} did not trigger auth_required"
+        assert any(marker in s for s in out["signals"]), f"marker {marker!r} not reported in signals"
 
 
 def test_detect_auth_clean_product_page():
