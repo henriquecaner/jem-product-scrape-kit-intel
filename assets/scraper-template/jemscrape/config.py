@@ -36,6 +36,10 @@ def validate_config(cfg):
     if not isinstance(runtime, str) or runtime not in VALID_RUNTIMES:
         errors.append(f"runtime: must be one of {sorted(VALID_RUNTIMES)}")
 
+    fetch_mode = cfg.get("fetch_mode")
+    if fetch_mode is not None and fetch_mode not in ("http", "browser"):
+        errors.append('fetch_mode: must be "http" or "browser" if set')
+
     ua = cfg.get("user_agent")
     if not isinstance(ua, str) or not ua.strip():
         errors.append("user_agent: required non-empty string")
