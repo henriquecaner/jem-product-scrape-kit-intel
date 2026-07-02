@@ -29,3 +29,8 @@ def test_workflow_checkpoints_uploads_and_notifies():
 
 def test_workflow_has_write_permission_for_checkpoint():
     assert "contents: write" in WF_TEXT
+
+
+def test_workflow_surfaces_push_failures_instead_of_swallowing():
+    assert "git push || echo" not in WF_TEXT
+    assert "git pull --rebase" in WF_TEXT

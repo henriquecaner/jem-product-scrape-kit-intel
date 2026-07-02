@@ -426,9 +426,11 @@ jobs:
         run: |
           git config user.name "scrape-bot"
           git config user.email "scrape-bot@users.noreply.github.com"
-          git add state/ exports/
+          mkdir -p state exports
+          git add state exports
           git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"
-          git push || echo "push skipped"
+          git pull --rebase --autostash || echo "rebase skipped"
+          git push || python notify.py --kind error --message "checkpoint push FAILED for run ${{ github.run_id }} - cursor may re-scrape"
 
       - uses: actions/upload-artifact@v4
         with:

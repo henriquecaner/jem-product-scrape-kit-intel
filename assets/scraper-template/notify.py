@@ -8,7 +8,9 @@ _LEVELS = {"error": "::error::", "warning": "::warning::", "notice": "::notice::
 
 def format_notification(kind, message):
     prefix = _LEVELS.get(kind, "::notice::")
-    return f"{prefix}[scrape] {message}"
+    # Collapse newlines so a message can never inject a second ::annotation:: line.
+    safe = message.replace("\r", " ").replace("\n", " ")
+    return f"{prefix}[scrape] {safe}"
 
 
 def emit(kind, message, *, stream=None):
