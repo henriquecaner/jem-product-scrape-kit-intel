@@ -48,7 +48,7 @@ jobs:
           git add state exports
           git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"
           git pull --rebase --autostash || echo "rebase skipped"
-          git push || python notify.py --kind error --message "checkpoint push FAILED for run ${{ github.run_id }} - cursor may re-scrape"
+          git push || { python notify.py --kind error --message "checkpoint push FAILED for run ${{ github.run_id }} - cursor may re-scrape"; exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:

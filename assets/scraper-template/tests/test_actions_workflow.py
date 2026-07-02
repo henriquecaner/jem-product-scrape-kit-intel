@@ -34,3 +34,11 @@ def test_workflow_has_write_permission_for_checkpoint():
 def test_workflow_surfaces_push_failures_instead_of_swallowing():
     assert "git push || echo" not in WF_TEXT
     assert "git pull --rebase" in WF_TEXT
+
+
+def test_workflow_push_failure_fails_the_step():
+    # A push failure must notify AND fail the step (exit 1), so the run goes red
+    # and status-based monitoring catches a lost checkpoint — not just a log line.
+    push_i = WF_TEXT.index("git push ||")
+    tail = WF_TEXT[push_i:push_i + 200]
+    assert "notify.py" in tail and "exit 1" in tail
