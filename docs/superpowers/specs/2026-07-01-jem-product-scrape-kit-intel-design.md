@@ -3,7 +3,7 @@
 **Data:** 2026-07-01
 **Autor:** Henrique Caner (JEM Systems) + Claude Code
 **Status:** Aprovado para plano de implementação
-**Revisão:** rev4 — divide o Plano 3 (Auth + browser adapter): §5.2 especifica o **adapter de render por browser (3a)**, construído agora (resolve SPA/JS público, sem login); a metade **auth/token (3b, §5.1)** fica deferida (YAGNI) até haver alvo logado (achado #44). rev3 adicionou o Warm-Up Lap obrigatório + review de sinal verde (§9.1, #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
+**Revisão:** rev5 — §5.3 especifica a **implementação do runtime Actions (Plano 5)**: workflow do pipeline determinístico no cron, com gate de compliance no runtime e o mecanismo secrets→arquivos pros gates gitignored; Batch/API é hook futuro (achado #45). rev4 dividiu o Plano 3 em 3a (browser adapter, §5.2) + 3b deferido (#44). rev3 adicionou o Warm-Up Lap + review de sinal verde (§9.1, #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
 
 ---
 
@@ -108,6 +108,20 @@ Muitos sites são SPAs: o HTML estático vem vazio e só um browser que executa 
 **Compliance intacto:** os dois gates (§10 compliance + §9.1 veredito) e o `Pacer` (rate-limit entre renders) continuam valendo; robots idem. O modo browser fecha o loop do warm-up: `warmup.py --render browser` re-mede o shape depois que a TI instala o Playwright.
 
 Playwright passa a ser **dependência opcional declarada** (não entra no núcleo zero-dep, §3), só no caminho browser.
+
+### 5.3 Implementação do runtime Actions (Plano 5)
+
+O workflow roda o pipeline **determinístico** atual (fetch → parse → normalize → dedup → export) sem supervisão, no cron, com o gate de compliance no runtime (§10).
+
+**Secrets → arquivos (mecanismo-chave).** Os arquivos de gate são gitignored (segredos): `.scrape-authorization.json` e `.scrape-warmup.json` não vão pro repo. No Actions, o passo de setup os **materializa a partir de secrets** (`SCRAPE_AUTHORIZATION`, `SCRAPE_WARMUP`) via `actions_setup.py` — fail-closed: secret ausente → aborta non-zero antes de qualquer fetch; perms restritas (0600).
+
+**Passos do workflow** (`assets/github-actions/scrape.yml`, template): `workflow_dispatch` + `schedule` (cron); checkout; setup Python; `actions_setup.py` (materializa os gates); `smoke_test.py` (gate de compliance, fail-closed); `scrape.py --limit <chunk>` (cron em pedaços, retoma do `state/cursor.json`); `build_dataset.py` (monta exports); commit do checkpoint (`state/cursor.json` + `exports/`, conta como atividade e evita auto-disable); `actions/upload-artifact` de `exports/`; em falha, `notify.py` (`if: failure()`).
+
+**Testável (stdlib, TDD):** `jemscrape/secrets_io.py` (`materialize_secret`, fail-closed), `actions_setup.py` (CLI que materializa os dois gates), `notify.py` (formata/emite anotação GitHub `::error::`/`::warning::`). O `.yml` é template (asset) validado por teste de asserção textual dos passos/guards.
+
+**Determinístico agora, Batch depois.** O pipeline v1 é determinístico → o Actions não precisa da Anthropic API. O passo de normalização por LLM com **Batch (−50%)** + `ANTHROPIC_API_KEY` (§11) entra quando a normalização assistida por LLM existir (Camada 2); fica como secret opcional + hook documentado, não no caminho atual.
+
+**Fora do Plano 5 (deferido):** deploy automatizado (`gh secret set` + push do workflow via API do GitHub) — é a skill/driver de onboarding (Plano 6). O Plano 5 entrega o template + os helpers testáveis + o gate no runtime.
 
 ## 6. Onboarding em duas fases
 
@@ -418,3 +432,4 @@ Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais +
 | 42 | Playwright vs zero-dep | §3 (zero-dep = núcleo HTTP; Playwright declarado) |
 | 43 | Warm-up lap obrigatório + review de sinal verde antes do run full (sessão 2026-07-02: ADI = SPA/JS descoberto só na tentativa) | §9.1, §8 (skill `scrape-warmup` + asset `warmup.py`), §11 (Opus 4.8 `xhigh` revisor + advisor Sonnet 5) |
 | 44 | Plano 3 dividido: render por browser (3a, o bloqueio real = SPA/JS) construído; auth/token (3b) deferido YAGNI (usuário sem login) | §5.2 (`jemscrape/browser.py` + `drivers/playwright_render.py` + `fetch_mode`), §5.1 (3b deferido), §3 (Playwright = dep opcional) |
+| 45 | Runtime Actions (Plano 5): workflow determinístico no cron + gate no runtime + secrets→arquivos pros gates gitignored; Batch/API = hook futuro (normalize v1 é determinística) | §5.3 (`actions_setup.py` + `jemscrape/secrets_io.py` + `notify.py` + `assets/github-actions/scrape.yml`), §10 (gate no workflow), §11 (Batch adiado) |
