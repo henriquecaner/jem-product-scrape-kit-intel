@@ -98,11 +98,13 @@ def materialize_secret(name, path, *, env, mode=0o600):
         raise ConfigError(f"missing required secret env var: {name}")
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(value, encoding="utf-8")
-    try:
-        os.chmod(p, mode)
-    except OSError:
-        pass
+    # Create with restrictive perms FROM CREATION — no world-readable window.
+    # (0o600 has no group/other bits, so umask cannot loosen it.) The chmod
+    # after covers a pre-existing file, and its failure is surfaced, not swallowed.
+    fd = os.open(str(p), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(value)
+    os.chmod(p, mode)
     return p
 ```
 
