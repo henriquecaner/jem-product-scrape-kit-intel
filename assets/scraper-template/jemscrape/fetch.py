@@ -1,6 +1,7 @@
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 
 from .errors import FetchError
 
@@ -33,3 +34,56 @@ def fetch(url, *, user_agent, timeout=30, retries=4,
             last_exc = exc
             backoff_sleep(10 * attempt)
     raise FetchError(f"failed to fetch {url} after {retries} attempts: {last_exc}")
+
+
+@dataclass
+class Probe:
+    status: int
+    headers: dict          # header name (lowercased) -> value
+    body: str
+    final_url: str
+
+
+def _headers_to_dict(headers):
+    out = {}
+    if headers:
+        for k, v in headers.items():
+            out[k.lower()] = v
+    return out
+
+
+def probe(url, *, user_agent, timeout=30, urlopen=_default_urlopen):
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    try:
+        resp = urlopen(request, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        try:
+            raw = exc.read()
+        except Exception:
+            raw = b""
+        return Probe(
+            status=exc.code,
+            headers=_headers_to_dict(getattr(exc, "headers", None)),
+            body=raw.decode("utf-8", errors="replace"),
+            final_url=getattr(exc, "url", url) or url,
+        )
+    except urllib.error.URLError as exc:
+        raise FetchError(f"network error probing {url}: {exc}") from exc
+    try:
+        raw = resp.read()
+    finally:
+        close = getattr(resp, "close", None)
+        if close:
+            close()
+    status = getattr(resp, "status", None)
+    if status is None:
+        getcode = getattr(resp, "getcode", None)
+        status = getcode() if getcode else 200
+    geturl = getattr(resp, "geturl", None)
+    final_url = geturl() if geturl else url
+    return Probe(
+        status=status,
+        headers=_headers_to_dict(getattr(resp, "headers", None)),
+        body=raw.decode("utf-8", errors="replace"),
+        final_url=final_url,
+    )
