@@ -57,8 +57,8 @@ _CF_BODY = (
     "checking your browser", "cf-browser-verification",
 )
 _GEO_BODY = (
-    "not available in your country", "access denied",
-    "blocked in your region", "not available in your region",
+    "not available in your country", "not available in your region",
+    "blocked in your region",
 )
 
 
@@ -68,15 +68,23 @@ def detect_antibot(probe):
     if probe.status == 429:
         signals.append("status 429 (rate limited)")
         kind = "rate"
-    if "cf-ray" in probe.headers or "cf-mitigated" in probe.headers:
-        signals.append("cloudflare header (cf-ray)")
+    # cf-ray is added to EVERY Cloudflare-proxied response (including normal
+    # 200s), so it is NOT a block signal — using it as one would flag every
+    # page of any Cloudflare-fronted site. cf-mitigated is set only when
+    # Cloudflare actually challenged or blocked the request.
+    if "cf-mitigated" in probe.headers:
+        signals.append("cloudflare header (cf-mitigated)")
         kind = kind or "cloudflare"
     low = (probe.body or "").lower()
-    for marker in _CF_BODY:
-        if marker in low:
-            signals.append(f"cloudflare body: {marker!r}")
-            kind = kind or "cloudflare"
-            break
+    # A Cloudflare challenge/interstitial is never a plain 200 with product
+    # content, so only trust these body markers on a non-200 response —
+    # otherwise a product page that merely quotes the phrase is misread.
+    if probe.status != 200:
+        for marker in _CF_BODY:
+            if marker in low:
+                signals.append(f"cloudflare body: {marker!r}")
+                kind = kind or "cloudflare"
+                break
     for marker in _GEO_BODY:
         if marker in low:
             signals.append(f"geo-block body: {marker!r}")

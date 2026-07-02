@@ -95,6 +95,41 @@ def test_detect_antibot_clean():
     assert out["blocked"] is False and out["kind"] is None
 
 
+def test_detect_antibot_cfray_on_normal_200_is_not_blocked():
+    # cf-ray is present on EVERY Cloudflare-proxied response, including normal
+    # 200s — it must NOT by itself mean "blocked", or every page of a
+    # Cloudflare-fronted site would be falsely skipped by the warm-up.
+    out = detect_antibot(Probe(status=200, headers={"cf-ray": "abc"},
+                               body="<h1>Fire-Lite ES-200X</h1>", final_url="https://x/p"))
+    assert out["blocked"] is False and out["kind"] is None
+
+
+def test_detect_antibot_cf_mitigated_header_is_blocked():
+    # cf-mitigated is only set when Cloudflare actually challenged/mitigated.
+    out = detect_antibot(Probe(status=403, headers={"cf-mitigated": "challenge"},
+                               body="", final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "cloudflare"
+
+
+def test_detect_antibot_cf_challenge_body_ignored_on_200():
+    # A real Cloudflare challenge is never a plain 200 with content; a 200 that
+    # merely contains the phrase must not be flagged as blocked.
+    out = detect_antibot(Probe(status=200, headers={},
+                               body="Just a moment while we set things up.",
+                               final_url="https://x/p"))
+    assert out["blocked"] is False
+
+
+def test_detect_antibot_access_phrase_in_200_product_body_not_blocked():
+    # "access denied" is a generic phrase that legitimately appears in product
+    # copy (e.g. access-control hardware); a 200 product page must not be
+    # misread as a block.
+    out = detect_antibot(Probe(status=200, headers={},
+                               body="<p>Prevents access denied faults on the control panel.</p>",
+                               final_url="https://x/p"))
+    assert out["blocked"] is False
+
+
 def _rec(pid, name, prices=None, images=None, breadcrumbs=None):
     return normalize(
         {"product_id": pid, "name": name, "sku": pid,
