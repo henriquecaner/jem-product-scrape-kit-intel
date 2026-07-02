@@ -14,12 +14,14 @@ from scrape import preflight   # compliance gate (config + authz), fail-closed
 HERE = Path(__file__).resolve().parent
 
 
-def main(argv=None, *, probe_fn=None, parse_fn=None):
+def main(argv=None, *, probe_fn=None, parse_fn=None, render_fn=None):
     parser = argparse.ArgumentParser(description="Warm-up lap (recon before full run)")
     parser.add_argument("--sample", required=True, help="JSON file: list of sample URLs")
     parser.add_argument("--config", default=str(HERE / "config.json"))
     parser.add_argument("--authz", default=str(HERE / ".scrape-authorization.json"))
     parser.add_argument("--out", default=str(HERE / ".scrape-warmup-report.json"))
+    parser.add_argument("--render", choices=["http", "browser"], default=None,
+                        help="fetch mode override (default: config fetch_mode or http)")
     args = parser.parse_args(argv)
 
     now = datetime.now(timezone.utc)
@@ -39,10 +41,17 @@ def main(argv=None, *, probe_fn=None, parse_fn=None):
         return 2
 
     if probe_fn is None:
-        user_agent = cfg["user_agent"]
+        mode = args.render or cfg.get("fetch_mode", "http")
+        if mode == "browser":
+            from jemscrape.browser import make_browser_probe
+            if render_fn is None:
+                from drivers.playwright_render import render as render_fn
+            probe_fn = make_browser_probe(render_fn)
+        else:
+            user_agent = cfg["user_agent"]
 
-        def probe_fn(url):
-            return http_probe(url, user_agent=user_agent)
+            def probe_fn(url):
+                return http_probe(url, user_agent=user_agent)
     if parse_fn is None:
         from site_adapter import parse as parse_fn   # per-site, created in scaffold
 

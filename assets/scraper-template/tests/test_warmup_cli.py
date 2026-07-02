@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 
 import warmup
 from jemscrape.fetch import Probe
+from jemscrape.browser import RenderedResult
 
 SERVER_BODY = "<html><body><h1>Widget</h1>" + ("<p>d </p>" * 40) + "</body></html>"
 
@@ -69,3 +70,28 @@ def test_warmup_cli_missing_sample_returns_2(tmp_path):
          "--authz", str(authz), "--out", str(tmp_path / "r.json")],
         probe_fn=lambda u: None, parse_fn=lambda b, u: None)
     assert rc == 2
+
+
+def test_warmup_cli_browser_mode_uses_render_fn(tmp_path):
+    cfg, authz = _write_valid_gate_files(tmp_path)
+    sample = tmp_path / "sample.json"
+    sample.write_text(json.dumps(["https://example.com/product/1"]), encoding="utf-8")
+    out = tmp_path / "r.json"
+    rendered = "<html><body><h1>Widget</h1>" + ("<p>d </p>" * 40) + "</body></html>"
+
+    def fake_render(url):
+        return RenderedResult(status=200, html=rendered, final_url=url)
+
+    def fake_parse(body, url):
+        assert "Widget" in body      # proves the browser-rendered html reached parse
+        return {"product_id": "A1", "name": "Widget", "sku": "A1"}
+
+    rc = warmup.main(
+        ["--sample", str(sample), "--config", str(cfg), "--authz", str(authz),
+         "--out", str(out), "--render", "browser"],
+        render_fn=fake_render, parse_fn=fake_parse)
+
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["fetched"] == 1
+    assert data["shape"]["count"] == 1
