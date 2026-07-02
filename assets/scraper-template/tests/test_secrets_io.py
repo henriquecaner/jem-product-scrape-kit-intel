@@ -27,3 +27,19 @@ def test_materialize_secret_missing_raises(tmp_path):
 def test_materialize_secret_blank_raises(tmp_path):
     with pytest.raises(ConfigError):
         materialize_secret("SEC", tmp_path / "s.json", env={"SEC": "   "})
+
+
+def test_materialize_secret_propagates_chmod_failure(tmp_path, monkeypatch):
+    import os as _os
+
+    monkeypatch.setattr(
+        _os, "chmod", lambda *a, **k: (_ for _ in ()).throw(OSError("boom"))
+    )
+    with pytest.raises(OSError):
+        materialize_secret("SEC", tmp_path / "s.json", env={"SEC": "data"})
+
+
+def test_materialize_secret_custom_mode(tmp_path):
+    dest = tmp_path / "s.json"
+    materialize_secret("SEC", dest, env={"SEC": "data"}, mode=0o640)
+    assert stat.S_IMODE(dest.stat().st_mode) == 0o640
