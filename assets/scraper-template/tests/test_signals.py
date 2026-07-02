@@ -81,7 +81,9 @@ def test_detect_antibot_429_rate():
 
 
 def test_detect_antibot_cloudflare_header():
-    out = detect_antibot(Probe(status=503, headers={"cf-ray": "abc"}, body="Just a moment...", final_url="https://x/p"))
+    out = detect_antibot(Probe(status=503, headers={"cf-ray": "abc"},
+                               body="Checking your browser before accessing the store.",
+                               final_url="https://x/p"))
     assert out["blocked"] is True and out["kind"] == "cloudflare"
 
 
@@ -118,6 +120,19 @@ def test_detect_antibot_cf_challenge_body_ignored_on_200():
                                body="Just a moment while we set things up.",
                                final_url="https://x/p"))
     assert out["blocked"] is False
+
+
+def test_detect_antibot_rendered_cf_challenge_at_200_is_blocked():
+    # A browser-rendered Cloudflare JS challenge returns HTTP 200 (Playwright
+    # follows the challenge page as a normal navigation) with no special
+    # headers (headers={} since Playwright doesn't surface raw response
+    # headers the same way). The challenge-specific body markers must still
+    # be trusted regardless of status, or browser-mode probes silently miss
+    # every JS-challenge block.
+    out = detect_antibot(Probe(status=200, headers={},
+                               body="Checking your browser before accessing. cf-browser-verification",
+                               final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "cloudflare"
 
 
 def test_detect_antibot_access_phrase_in_200_product_body_not_blocked():

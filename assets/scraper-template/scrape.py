@@ -45,7 +45,8 @@ def build_fetcher(cfg, *, http_fetch, render_fn=None):
     if cfg.get("fetch_mode") == "browser":
         from jemscrape.browser import make_browser_fetcher
         if render_fn is None:
-            from drivers.playwright_render import render as render_fn
+            from drivers.playwright_render import render as _render
+            render_fn = lambda url: _render(url, user_agent=cfg["user_agent"])
         return make_browser_fetcher(render_fn)
     user_agent = cfg["user_agent"]
     return lambda url: http_fetch(url, user_agent=user_agent)

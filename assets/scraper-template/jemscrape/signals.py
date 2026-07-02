@@ -53,8 +53,11 @@ def detect_auth(probe):
 
 
 _CF_BODY = (
-    "just a moment", "attention required", "cf-chl",
-    "checking your browser", "cf-browser-verification",
+    "checking your browser before accessing",
+    "cf-browser-verification",
+    "cf-chl",
+    "enable javascript and cookies to continue",
+    "verify you are human",
 )
 _GEO_BODY = (
     "not available in your country", "not available in your region",
@@ -76,15 +79,16 @@ def detect_antibot(probe):
         signals.append("cloudflare header (cf-mitigated)")
         kind = kind or "cloudflare"
     low = (probe.body or "").lower()
-    # A Cloudflare challenge/interstitial is never a plain 200 with product
-    # content, so only trust these body markers on a non-200 response —
-    # otherwise a product page that merely quotes the phrase is misread.
-    if probe.status != 200:
-        for marker in _CF_BODY:
-            if marker in low:
-                signals.append(f"cloudflare body: {marker!r}")
-                kind = kind or "cloudflare"
-                break
+    # These markers are challenge-specific phrasing that never appears in
+    # normal product copy, so they are trusted regardless of status — a
+    # browser-rendered Cloudflare JS challenge is served as HTTP 200 (with no
+    # cf-mitigated header available to Playwright), so gating on status would
+    # silently miss it.
+    for marker in _CF_BODY:
+        if marker in low:
+            signals.append(f"cloudflare body: {marker!r}")
+            kind = kind or "cloudflare"
+            break
     for marker in _GEO_BODY:
         if marker in low:
             signals.append(f"geo-block body: {marker!r}")

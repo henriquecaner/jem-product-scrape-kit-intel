@@ -45,7 +45,8 @@ def main(argv=None, *, probe_fn=None, parse_fn=None, render_fn=None):
         if mode == "browser":
             from jemscrape.browser import make_browser_probe
             if render_fn is None:
-                from drivers.playwright_render import render as render_fn
+                from drivers.playwright_render import render as _render
+                render_fn = lambda url: _render(url, user_agent=cfg["user_agent"])
             probe_fn = make_browser_probe(render_fn)
         else:
             user_agent = cfg["user_agent"]
