@@ -30,3 +30,23 @@ def detect_render(body):
         "script_ratio": round(script_ratio, 3),
         "markers": markers,
     }
+
+
+_LOGIN_PATH = re.compile(r"/(login|signin|sign-in|account|myaccount|auth)(/|$|\?)", re.I)
+_LOGIN_BODY = (
+    "sign in to see price", "log in to view", "please sign in",
+    "login required", "member price", 'type="password"',
+)
+
+
+def detect_auth(probe):
+    signals = []
+    if probe.status in (401, 403):
+        signals.append(f"status {probe.status}")
+    if _LOGIN_PATH.search(probe.final_url or ""):
+        signals.append(f"auth URL: {probe.final_url}")
+    low = (probe.body or "").lower()
+    for marker in _LOGIN_BODY:
+        if marker in low:
+            signals.append(f"body marker: {marker!r}")
+    return {"auth_required": bool(signals), "signals": signals}
