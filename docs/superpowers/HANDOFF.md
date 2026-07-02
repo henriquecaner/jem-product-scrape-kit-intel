@@ -25,16 +25,21 @@ O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m
 
 ## Pendências (loose ends)
 
-1. **Review de branch inteira do Plano 2** — foi PULADO num push direto. No Plano 1 esse review holístico pegou um Critical (colisão de slug) que os reviews por-task não viram, então vale rodar sobre a `main`.
-2. **Review por-task da Task 6** (`build_dataset`) — pulado. Concerns leves: `cfg["target_domain"]` é subscript direto; `main()` CLI sem teste (per brief).
-3. **Doc divergente:** `plans/...-normalize-export.md` Task 5 (`export_wiki`) ainda mostra o código-exemplo pré-endurecimento (vulnerável a traversal). O **código shipado está correto/endurecido** — só o exemplo do doc diverge; sincronizar.
+**Todas as 3 do Plano 2 fechadas em `78bfa1a` (2026-07-02). Suíte: 97 testes passando.**
 
-## Roadmap restante (Planos 3–6, não começados)
+1. ~~Review de branch inteira do Plano 2~~ ✅ rodado (Opus): sem Critical; 3 Important corrigidos com TDD (main() robusto + testado; coerção em `collapse_stock`/`pick_price`; anti-CSV-injection no `write_csv`) + 2 F401.
+2. ~~Review por-task da Task 6~~ ✅ coberto pelo review de branch inteira; `cfg["target_domain"]` e `main()` sem teste resolvidos.
+3. ~~Doc divergente do `export_wiki`~~ ✅ `plans/...-normalize-export.md` Task 5 sincronizado com o código endurecido (`safe_name` `_DOTS_ONLY` + `write_wiki` containment).
+
+## Roadmap restante (não começados)
 
 3. **Auth + browser adapter** — Playwright `storage_state`, ciclo de token (spec §5.1).
-4. **Runtime GitHub Actions** — workflow + `gh` + secret + checkpoint + artifact.
-5. **Onboarding** — skill `scrape-onboarding` + toolchain + kit pra TI + drivers.
-6. **Empacotamento do plugin** — `plugin.json`, SKILL.md, commands, references, agent, hooks.json.
+4. **Warm-Up Lap obrigatório + review de sinal verde** — skill `scrape-warmup` + `warmup.py`: amostra 10–50, detecta render/auth/anti-bot/shape, emite recon + checklist do operador; review obrigatório Opus 4.8 `xhigh` (revisor) + Sonnet 5 (advisor) → VERDE | AJUSTAR/REFATORAR | PEDIR AJUDA; **runtime recusa run full sem verde**. Adicionado ao spec em **rev3, §9.1** (achado #43). Depende do adapter browser (Plano 3) pra sites SPA/JS.
+5. **Runtime GitHub Actions** — workflow + `gh` + secret + checkpoint + artifact.
+6. **Onboarding** — skill `scrape-onboarding` + toolchain + kit pra TI + drivers.
+7. **Empacotamento do plugin** — `plugin.json`, SKILL.md, commands, references, agent, hooks.json.
+
+**Motivação do #4 (warm-up):** na sessão 2026-07-02, testando ADI (`adiglobaldistribution.us`), descobrimos SPA/JS-only + muro de login **só na tentativa** — o gate de compliance passou (robots permite `/Catalog/`+`/Product/`), mas fetch estático volta vazio. O warm-up teria cuspido isso antes de gastar o run.
 
 ## Processo e convenções
 

@@ -3,7 +3,7 @@
 **Data:** 2026-07-01
 **Autor:** Henrique Caner (JEM Systems) + Claude Code
 **Status:** Aprovado para plano de implementação
-**Revisão:** rev2 — incorpora o deep review multi-agente (49 achados verificados). Rastreabilidade no §21.
+**Revisão:** rev3 — adiciona o Warm-Up Lap **obrigatório** + review de sinal verde (Opus 4.8 `xhigh` revisor + Sonnet 5 advisor) antes de qualquer run full (§9.1, achado #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
 
 ---
 
@@ -143,17 +143,18 @@ Formatos de campo (`authorization_ref`, `related[]`, `attachments[]`) definidos 
 | Skill | Papel |
 |---|---|
 | `scrape-onboarding` | Onboarding de primeira vez (via `/scrape-setup`): toolchain, GitHub/`gh`, Playwright, fix de PATH (escreve settings.json), pré-requisitos de org, check verde |
-| `scrape-product-catalog` | Orquestrador-wizard (via `/scrape-init`): entende o alvo, roda o gate, escolhe runtime, faz scaffold, dirige canary → run-plan → run → normalize |
+| `scrape-product-catalog` | Orquestrador-wizard (via `/scrape-init`): entende o alvo, roda o gate, escolhe runtime, faz scaffold, dirige warm-up → review → run-plan → run → normalize |
 | `scrape-compliance-gate` | Segurança em camadas; grava/valida o `.scrape-authorization.json` (schema em §10.1) |
+| `scrape-warmup` | Warm-up lap **obrigatório** (§9.1): amostra 10–50 produtos, detecta render/auth/anti-bot/shape, emite recon + checklist de preparo, e roda o review de sinal verde (Opus 4.8 `xhigh` + advisor Sonnet 5) que trava a largada |
 | `scrape-normalize-export` | Cru → registro canônico + CSV/wiki/manifest; dedup/reconciliação (multi-band, hub-stock, multi-pass) |
-| `scrape-run-plan` | Gera o briefing pré-run (escopo, ETA, custo, riscos, aprovação); render em PDF com fallback |
+| `scrape-run-plan` | Gera o briefing pré-run (escopo, ETA, custo, riscos, aprovação); render em PDF com fallback — alimentado pelo warm-up (§9.1) |
 
 **Commands:** `/scrape-setup` (1ª vez) · `/scrape-init` (novo projeto) · `/scrape-status` (lê `state/cursor.json` + `docs/DAILY.md`; no Actions entrega link do artifact/commit).
 
 **References:** `runtime-local.md` · `runtime-github-actions.md` (estrela — inclui contrato de token, checkpoint, monitoramento) · `runtime-cloudflare-optional.md` · `runtime-vm-fallback.md` · `canonical-record.md` · `anti-ban-playbook.md` · `geo-proxy.md` · `execution-strategy.md` · `windows-toolchain.md` · `estimation.md`.
 
 **Assets / templates (o motor):**
-- `assets/scraper-template/` — `scrape.py` (núcleo HTTP zero-dep + adaptador Playwright opcional; **valida a autorização em runtime e aborta non-zero — ver §10**), `smoke_test.py`, `notify.py`, `build_dataset.py` (o passo que chama a API com Batch quando roda no Actions), `config.json.example` (declara `rate_limit_floor` como campo)
+- `assets/scraper-template/` — `scrape.py` (núcleo HTTP zero-dep + adaptador Playwright opcional; **valida a autorização em runtime e aborta non-zero — ver §10**), `smoke_test.py`, `warmup.py` (warm-up lap §9.1: amostra + detecção de render/auth/anti-bot/shape; **runtime recusa run full sem warm-up verde**), `notify.py`, `build_dataset.py` (o passo que chama a API com Batch quando roda no Actions), `config.json.example` (declara `rate_limit_floor` como campo)
 - `assets/drivers/` — `auth_capture.py` (Playwright `storage_state` + push via `gh`), `daily_refresh.py`, `pull.py`, `watch.py`, `render_pdf.py` (descobre o binário do Chrome; fallback HTML/Markdown se não achar) — Python cross-platform
 - `assets/vm/` — `startup-script.sh`, `deploy_vm.sh`, `push_token.sh` (bash, roda no Linux da VM; só no fallback)
 - `assets/github-actions/` — template de workflow `.yml` (cron em pedaços, secrets, checkpoint, `upload-artifact`, gate de autorização em runtime)
@@ -175,7 +176,11 @@ Formatos de campo (`authorization_ref`, `related[]`, `attachments[]`) definidos 
   → escolhe runtime (Local / Actions / promoção a VM), ver §5
   → scaffold do projeto a partir dos templates (Claude inspeciona uma página e adapta
                         selectors/endpoints; para geo/auth configura proxy e captura de sessão)
-  → canary (--limit 5 + 1 página de paginação, valida parse E navegação de páginas)
+  → WARM-UP LAP (OBRIGATÓRIO, §9.1) — amostra 10–50 produtos; absorve o canary (parse + paginação)
+                        e detecta render (server vs SPA/JS), auth/paywall, anti-bot/geo, shape de parse
+                        → relatório de recon + checklist de preparo do operador
+  → REVIEW OBRIGATÓRIO (§9.1) — Opus 4.8 @ xhigh (revisor) + Sonnet 5 (advisor):
+                        veredito VERDE | AJUSTAR/REFATORAR | PEDIR AJUDA — só VERDE segue
   → RUN-PLAN (escopo, ETA, custo, riscos → mitigações, autorização, assinatura; PDF com fallback)
     → aprovação (se o projeto exigir, §10.1)
   → run completo (Local na hora; Actions faz deploy do workflow + secret + cron + upload-artifact
@@ -184,6 +189,33 @@ Formatos de campo (`authorization_ref`, `related[]`, `attachments[]`) definidos 
   → auditor (Opus xhigh; workflow multi-agente quando há riscos)
   → handoff para skill de objetivo (Camada 2)
 ```
+
+### 9.1 Warm-Up Lap (obrigatório) + review de sinal verde
+
+**Regra dura:** nenhum run full roda sem um warm-up lap com veredito verde. O orquestrador e o runtime recusam pular a etapa — é fail-closed, igual ao gate de compliance (§10).
+
+**O que é.** Uma volta de reconhecimento antes da largada. Uma amostra de **10–50 produtos** (aleatória dentro do `scope`, descoberta por sitemap ou categorias permitidas) passa pelo caminho de fetch padrão (HTTP stdlib) primeiro. Absorve o antigo canary — valida parse e paginação — e vai além: aprende o site antes de gastar o run inteiro.
+
+**Os quatro sinais que ele mede:**
+1. **Render** — server-rendered ou SPA/JS-only. HTML vazio (shell de SPA) significa que o site exige Playwright/browser, não HTTP cru.
+2. **Auth / paywall** — redirect de login, campos ou preço escondidos, 401/403 → precisa de `storage_state`/login (§5.1).
+3. **Anti-bot / geo** — challenge de Cloudflare, 429 recorrente, geo-block → precisa de proxy/país ou promoção a VM (§5).
+4. **Shape de parse** — roda `normalize`/`dedup` na amostra e mede cobertura de campos (% com nome/SKU/preço/imagem/breadcrumb), padrão de price-band, formato de stock, colisão de variantes.
+
+**O que o warm-up entrega:**
+- **Relatório de recon** — as métricas dos quatro sinais, com amostras concretas.
+- **Checklist de preparo do operador** — o que a pessoa faz antes da largada, derivado dos sinais (não genérico): logar no site, habilitar a extensão Chrome ou instalar o Playwright (via TI), configurar o proxy.
+- **Insumo do run-plan** — ETA, custo e riscos saem de evidência, não de premissa.
+
+**Review obrigatório (o gate de decisão).** Depois do warm-up, um review obrigatório roda com **Opus 4.8 effort `xhigh` como revisor** e **Sonnet 5 como advisor** — workflow de dois agentes: o advisor levanta hipóteses e riscos, o revisor decide. O veredito é um de três:
+
+| Veredito | Quando | O que acontece |
+|---|---|---|
+| **VERDE** | Padrões consistentes, cobertura suficiente, sem bloqueio | Libera o run-plan → run full |
+| **AJUSTAR / REFATORAR** | Parser/selectors/config precisam mudar (drift, cobertura baixa, campo-chave faltando) | Volta pro scaffold, corrige, re-warm-up |
+| **PEDIR AJUDA** | Ação do operador obrigatória (login, extensão, Playwright/TI, proxy) ou decisão humana (robots ambíguo, ToS) | Pausa e pede — não roda cego |
+
+**Gate final:** o run full libera só com veredito **VERDE** e, quando o projeto exigir, a aprovação do run-plan (§10.1). Reusa o padrão adversarial do `scrape-run-auditor` (§8), mas antes do run — não depois, quando o custo já foi gasto.
 
 ## 10. Segurança e compliance
 
@@ -235,6 +267,7 @@ Documentada em `references/execution-strategy.md`. **Nunca usar Haiku** (políti
 | Extração semântica simples em massa | **Sonnet 5** | medium | off | Local: subagents · Actions: script + **Batch** + caching |
 | Normalização com julgamento (categoria, match, qualidade) | **Sonnet 5** | medium | **on** | Local: subagents (pipeline) · Actions: script + **Batch** + caching |
 | Inferência de parser / auditoria | **Opus** | **xhigh** | on | workflow quando há riscos (dimensões em paralelo + verificação adversarial) |
+| Review do warm-up lap (§9.1): verde / ajustar / pedir ajuda | **Opus 4.8** (revisor) + **Sonnet 5** (advisor) | **xhigh** / medium | on | workflow de 2 agentes: advisor levanta riscos, revisor decide — **antes** do run; obrigatório, trava a largada |
 | Comparar nossos × concorrentes (Camada 2) | **Sonnet 5 / Opus** | medium/high | on | workflow (fan-out por produto) |
 
 **Levers de custo:** **Batch API (−50%) só no runtime Actions** (script + API key); prompt caching em qualquer runtime; thinking off no mecânico/extração simples (on no julgamento). Nota de billing: Batch exige API key + billing de API; a assinatura do Claude Code (runtime Local) não roteia por Batch. Controláveis: model/effort/thinking por skill/command/subagent/workflow-agent; na sessão principal o orquestrador recomenda/anuncia; escala para workflow multi-agente quando há riscos, respeitando o opt-in.
@@ -361,10 +394,11 @@ Escada de validação em cada scrape: **canary (parse + paginação) → `smoke_
 | 30 | Nome vs diretório | §1, §19 (renomear) |
 | 31 | Fix de PATH manual | §4, §6 (escrito pelo setup) |
 | 32 | Typo `scrap-` | §13 (`scrape-<site>`) |
-| 33 | Canary não valida paginação | §9 (canary + paginação) |
+| 33 | Canary não valida paginação | §9, §9.1 (absorvido pelo warm-up lap — valida parse + paginação) |
 | 34 | Limites do Cloudflare | §5 (nota + plano pago) |
 | 35 | `HTTPS_PROXY` não cobre o browser | §12 (proxy no launch do Playwright), `geo-proxy.md` |
 | 36/37 | Marcador de aprovação | §10.1 (`.scrape-approval.json` + hash) |
 | 39 | `smoke-gate` vs `smoke_test.py` | §15 (unificado) |
 | 40 | Origem de `plugin-validator`/`skill-reviewer` | §15 (toolchain plugin-dev) |
 | 42 | Playwright vs zero-dep | §3 (zero-dep = núcleo HTTP; Playwright declarado) |
+| 43 | Warm-up lap obrigatório + review de sinal verde antes do run full (sessão 2026-07-02: ADI = SPA/JS descoberto só na tentativa) | §9.1, §8 (skill `scrape-warmup` + asset `warmup.py`), §11 (Opus 4.8 `xhigh` revisor + advisor Sonnet 5) |
