@@ -1,0 +1,58 @@
+# Template — scaffolded into a generated project's .github/workflows/.
+# Not an active workflow in the plugin repo. See spec §5.3.
+name: scrape
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"   # daily ~09:17 UTC; adjust per project
+
+permissions:
+  contents: write          # commit the resume checkpoint
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Materialize gate secrets (fail-closed)
+        env:
+          SCRAPE_AUTHORIZATION: ${{ secrets.SCRAPE_AUTHORIZATION }}
+          SCRAPE_WARMUP: ${{ secrets.SCRAPE_WARMUP }}
+        run: python actions_setup.py
+
+      - name: Compliance gate
+        run: python smoke_test.py
+
+      - name: Scrape (resumable chunk)
+        env:
+          HTTPS_PROXY: ${{ secrets.HTTPS_PROXY }}
+        run: python scrape.py --limit 200
+
+      - name: Build dataset (exports)
+        # Records-file wiring (scrape -> build_dataset) is per-project via site_adapter; kept non-fatal.
+        run: python build_dataset.py --records data/raw_records.json || echo "build_dataset skipped"
+
+      - name: Commit checkpoint
+        run: |
+          git config user.name "scrape-bot"
+          git config user.email "scrape-bot@users.noreply.github.com"
+          git add state/ exports/
+          git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"
+          git push || echo "push skipped"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exports
+          path: exports/
+
+      - name: Notify on failure
+        if: failure()
+        run: python notify.py --kind error --message "scrape run ${{ github.run_id }} failed"
