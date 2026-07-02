@@ -1,0 +1,15 @@
+{
+  "name": "jem-product-scrape-kit-intel",
+  "version": "0.1.0",
+  "description": "Compliance-first kit for the JEM team to scrape supplier and competitor product catalogs and normalize them for the store. Enforces a fail-closed authorization gate, a mandatory warm-up lap, and exports a canonical CSV + wiki. Runs locally or on GitHub Actions.",
+  "author": { "name": "JEM Systems" },
+  "keywords": [
+    "scraping",
+    "product-catalog",
+    "ecommerce",
+    "compliance",
+    "github-actions",
+    "playwright",
+    "normalization"
+  ]
+}

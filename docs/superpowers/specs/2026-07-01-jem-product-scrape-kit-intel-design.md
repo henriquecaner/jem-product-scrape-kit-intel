@@ -3,7 +3,7 @@
 **Data:** 2026-07-01
 **Autor:** Henrique Caner (JEM Systems) + Claude Code
 **Status:** Aprovado para plano de implementação
-**Revisão:** rev6 — §6.1 especifica a **implementação do onboarding (Plano 6)**: núcleo testável (green-check + kit-TI + fix de PATH + CLI `scrape_setup`) + assets (`.gitignore` do scaffold, kit-TI) + driver `deploy_actions`; skill markdown + commands deferidos ao Plano 7 (achado #46). rev5 §5.3 runtime Actions (#45). rev4 dividiu o Plano 3 em 3a (§5.2) + 3b deferido (#44). rev3 Warm-Up Lap + review de sinal verde (§9.1, #43). rev2 deep review multi-agente (49 achados). Rastreabilidade no §21.
+**Revisão:** rev7 — §14.1 especifica as **decisões de empacotamento (Plano 7)**: orquestrador = wizard guiado, 6 skills (incl. `scrape-warmup`), commands/agent/hooks, validação plugin-dev (achado #47). rev6 — §6.1 especifica a **implementação do onboarding (Plano 6)**: núcleo testável (green-check + kit-TI + fix de PATH + CLI `scrape_setup`) + assets (`.gitignore` do scaffold, kit-TI) + driver `deploy_actions`; skill markdown + commands deferidos ao Plano 7 (achado #46). rev5 §5.3 runtime Actions (#45). rev4 dividiu o Plano 3 em 3a (§5.2) + 3b deferido (#44). rev3 Warm-Up Lap + review de sinal verde (§9.1, #43). rev2 deep review multi-agente (49 achados). Rastreabilidade no §21.
 
 ---
 
@@ -363,6 +363,15 @@ jem-product-scrape-kit-intel/
 ```
 Segue a convenção do plugin `ahrefs-intel` (descrições ricas com triggers e exemplos, `when_to_use`, `allowed-tools`, `model`). O `plugin.json` é especificado no plano espelhando o `ahrefs-intel`.
 
+### 14.1 Decisões de empacotamento (Plano 7)
+
+- **Orquestrador = wizard guiado.** `scrape-product-catalog` (via `/scrape-init`) pergunta um passo de cada vez (alvo? autorizado? país? agendado?), explica e confirma antes de cada gate — o público JEM é não-técnico.
+- **6 skills** (§8): `scrape-onboarding`, `scrape-product-catalog`, `scrape-compliance-gate`, `scrape-warmup` (roda o review de 2 agentes, §9.1), `scrape-normalize-export`, `scrape-run-plan`. Cada uma envolve capacidade **já construída** (Planos 1/2/4/3a/5/6); `scrape-run-plan` gera o briefing em markdown (PDF via `render_pdf` é enhancement futuro, §12).
+- **Commands:** `/scrape-setup` → onboarding; `/scrape-init` → wizard; `/scrape-status` → cursor/artifact.
+- **Agent** `scrape-run-auditor` (Opus `xhigh`). **Hooks** `PreToolUse` (defesa-em-profundidade, §8/§10: bloqueia autoria sem autorização/aprovação ou com credencial indo pro git; shim de interpretador `py -3`→`python3`→`python`, fail-closed) — a garantia real é o runtime.
+- **References:** núcleo conciso agora (`canonical-record`, `execution-strategy`, `anti-ban-playbook`, `runtime-github-actions`, `geo-proxy`, `estimation`, `windows-toolchain`); demais conforme necessidade.
+- **Validação:** `plugin-dev:plugin-validator` (estrutura) + `plugin-dev:skill-reviewer` (skills).
+
 ## 15. Testes e qualidade
 
 Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais + review de sinal verde, obrigatório, absorve o canary de parse + paginação) → `smoke_test.py` por chunk (fail-close abaixo de um piso de taxa de parse — pega drift de selector) → `scrape-run-auditor`**. O run-plan documenta cobertura esperada; o auditor confere a real e o `notify.py` alerta em falha/travamento/token-expirado/cobertura-baixa (canal default = issue no repo). Terminologia unificada: o "smoke-gate" É o `smoke_test.py`. Para o plugin em si: os agentes `plugin-validator` e `skill-reviewer` (do toolchain `plugin-dev`) antes de publicar.
@@ -452,3 +461,4 @@ Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais +
 | 44 | Plano 3 dividido: render por browser (3a, o bloqueio real = SPA/JS) construído; auth/token (3b) deferido YAGNI (usuário sem login) | §5.2 (`jemscrape/browser.py` + `drivers/playwright_render.py` + `fetch_mode`), §5.1 (3b deferido), §3 (Playwright = dep opcional) |
 | 45 | Runtime Actions (Plano 5): workflow determinístico no cron + gate no runtime + secrets→arquivos pros gates gitignored; Batch/API = hook futuro (normalize v1 é determinística) | §5.3 (`actions_setup.py` + `jemscrape/secrets_io.py` + `notify.py` + `assets/github-actions/scrape.yml`), §10 (gate no workflow), §11 (Batch adiado) |
 | 46 | Onboarding (Plano 6): núcleo testável (green-check + kit-TI + fix de PATH + CLI) + assets (scaffold `.gitignore`, kit-TI) + driver deploy_actions; skill/commands → Plano 7 | §6.1 (`jemscrape/toolchain.py` + `jemscrape/settings_patch.py` + `scrape_setup.py` + `assets/project-skeleton/.gitignore` + `assets/it-request/` + `drivers/deploy_actions.py`), §6 (2 fases) |
+| 47 | Empacotamento (Plano 7): plugin instalável — plugin.json + 6 skills (wizard guiado) + commands + agent + hooks + references; validado por plugin-dev | §14.1, §14 (estrutura), §8 (componentes) |
