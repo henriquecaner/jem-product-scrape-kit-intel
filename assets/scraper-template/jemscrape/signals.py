@@ -1,0 +1,32 @@
+import re
+
+_TAG = re.compile(r"<[^>]+>")
+_SCRIPT = re.compile(r"<script\b.*?</script>", re.I | re.S)
+_WS = re.compile(r"\s+")
+
+_SPA_MARKERS = (
+    'id="root"', "id='root'", 'id="app"', "id='app'",
+    "<app-root", "ng-app", "__next_data__", "window.__nuxt__",
+    "data-reactroot", "window.__initial_state__",
+)
+
+
+def detect_render(body):
+    body = body or ""
+    low = body.lower()
+    without_scripts = _SCRIPT.sub(" ", body)
+    visible = _WS.sub(" ", _TAG.sub(" ", without_scripts)).strip()
+    text_len = len(visible)
+    markers = [m for m in _SPA_MARKERS if m in low]
+    total = max(len(body), 1)
+    script_len = sum(len(m.group(0)) for m in _SCRIPT.finditer(body))
+    script_ratio = script_len / total
+    spa = bool(markers) and text_len < 500
+    if not spa and text_len < 200 and script_ratio > 0.5:
+        spa = True
+    return {
+        "mode": "spa" if spa else "server",
+        "text_len": text_len,
+        "script_ratio": round(script_ratio, 3),
+        "markers": markers,
+    }
