@@ -1,5 +1,5 @@
 # tests/test_signals.py
-from jemscrape.signals import detect_render, detect_auth
+from jemscrape.signals import detect_render, detect_auth, detect_antibot
 from jemscrape.fetch import Probe
 
 
@@ -72,3 +72,23 @@ def test_detect_auth_flags_every_login_body_marker():
 def test_detect_auth_clean_product_page():
     out = detect_auth(_probe(body="<h1>Widget</h1><span>$19.99</span>"))
     assert out["auth_required"] is False
+
+
+def test_detect_antibot_429_rate():
+    out = detect_antibot(Probe(status=429, headers={}, body="", final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "rate"
+
+
+def test_detect_antibot_cloudflare_header():
+    out = detect_antibot(Probe(status=503, headers={"cf-ray": "abc"}, body="Just a moment...", final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "cloudflare"
+
+
+def test_detect_antibot_geo_block_body():
+    out = detect_antibot(Probe(status=200, headers={}, body="This content is not available in your country.", final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "geo"
+
+
+def test_detect_antibot_clean():
+    out = detect_antibot(Probe(status=200, headers={}, body="<h1>Widget</h1>", final_url="https://x/p"))
+    assert out["blocked"] is False and out["kind"] is None

@@ -50,3 +50,36 @@ def detect_auth(probe):
         if marker in low:
             signals.append(f"body marker: {marker!r}")
     return {"auth_required": bool(signals), "signals": signals}
+
+
+_CF_BODY = (
+    "just a moment", "attention required", "cf-chl",
+    "checking your browser", "cf-browser-verification",
+)
+_GEO_BODY = (
+    "not available in your country", "access denied",
+    "blocked in your region", "not available in your region",
+)
+
+
+def detect_antibot(probe):
+    signals = []
+    kind = None
+    if probe.status == 429:
+        signals.append("status 429 (rate limited)")
+        kind = "rate"
+    if "cf-ray" in probe.headers or "cf-mitigated" in probe.headers:
+        signals.append("cloudflare header (cf-ray)")
+        kind = kind or "cloudflare"
+    low = (probe.body or "").lower()
+    for marker in _CF_BODY:
+        if marker in low:
+            signals.append(f"cloudflare body: {marker!r}")
+            kind = kind or "cloudflare"
+            break
+    for marker in _GEO_BODY:
+        if marker in low:
+            signals.append(f"geo-block body: {marker!r}")
+            kind = kind or "geo"
+            break
+    return {"blocked": bool(signals), "kind": kind, "signals": signals}
