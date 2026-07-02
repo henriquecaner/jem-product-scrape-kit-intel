@@ -1,0 +1,20 @@
+# Raw scrape cache — heavy + may hold scraped third-party content. Never commit.
+data/
+
+# Secrets / gate files — reconstructed from Actions secrets at runtime, never committed.
+.scrape-authorization.json
+.scrape-warmup.json
+*.token
+*.secret
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# OS
+.DS_Store
+
+# NOTE: exports/, state/, and wiki/ are intentionally VERSIONED — the deliverable
+# (products.csv, wiki/) and the resume checkpoint (state/cursor.json). Do NOT ignore them.
