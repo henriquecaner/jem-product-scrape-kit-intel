@@ -3,7 +3,7 @@
 **Data:** 2026-07-01
 **Autor:** Henrique Caner (JEM Systems) + Claude Code
 **Status:** Aprovado para plano de implementação
-**Revisão:** rev3 — adiciona o Warm-Up Lap **obrigatório** + review de sinal verde (Opus 4.8 `xhigh` revisor + Sonnet 5 advisor) antes de qualquer run full (§9.1, achado #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
+**Revisão:** rev4 — divide o Plano 3 (Auth + browser adapter): §5.2 especifica o **adapter de render por browser (3a)**, construído agora (resolve SPA/JS público, sem login); a metade **auth/token (3b, §5.1)** fica deferida (YAGNI) até haver alvo logado (achado #44). rev3 adicionou o Warm-Up Lap obrigatório + review de sinal verde (§9.1, #43). rev2 incorporou o deep review multi-agente (49 achados). Rastreabilidade no §21.
 
 ---
 
@@ -93,6 +93,21 @@ Regras:
 4. **Expiro mid-run → fail-closed + alerta** — o `scrape.py` detecta 401/403, para (não crasheia), grava o cursor, e abre uma issue/dispara `notify.py`. Nada de continuar cego.
 5. **Máquina offline** — se o run agendado precisa de token novo e a máquina do usuário está desligada, o run pausa e alerta; retoma no próximo refresh. Documentado como limitação honesta.
 6. **Gatilho de promoção** — se o site exige re-login interativo que não dá pra automatizar dentro da vida do token, promove para VM (fortus-style, dirigido pela TI).
+
+### 5.2 Adapter de render por browser (Plano 3a)
+
+Muitos sites são SPAs: o HTML estático vem vazio e só um browser que executa JS enxerga o produto. Esse é o bloqueio real que o warm-up (§9.1) já sinaliza ("PEDIR AJUDA: precisa browser") — independente de login.
+
+**Escopo dividido.** **3a (construído agora):** render de páginas públicas. **3b (deferido, YAGNI):** captura de sessão, ciclo de token (§5.1), `gh secret`, refresh diário, promoção a VM — só quando existir alvo logado.
+
+**Arquitetura** (espelha a DI do motor — o `runner` já recebe `fetcher`, o warm-up recebe `probe_fn`):
+- `jemscrape/browser.py` (stdlib, TDD): `RenderedResult(status, html, final_url)`; `browser_fetch(url, *, render_fn) -> str`; `browser_probe(url, *, render_fn) -> Probe`. Adapters puros que convertem um resultado renderizado nos contratos que o motor já usa. Testados com `render_fn` fake — Playwright não entra na suíte.
+- `assets/drivers/playwright_render.py` (Playwright, **única** importação da dep): `render(url, *, timeout, proxy=None) -> RenderedResult`. Import guardado, erro acionável se a dep faltar (instalada pela TI, §19). Fora da suíte stdlib — verificado por integração / smoke skip-if-absent.
+- Wiring: `config.json` ganha `fetch_mode: "http" | "browser"` (default `http`). `scrape.py` e `warmup.py` selecionam o fetcher/probe_fn; no modo browser injetam `render_fn=render` do driver. O core (runner/warm-up) não muda.
+
+**Compliance intacto:** os dois gates (§10 compliance + §9.1 veredito) e o `Pacer` (rate-limit entre renders) continuam valendo; robots idem. O modo browser fecha o loop do warm-up: `warmup.py --render browser` re-mede o shape depois que a TI instala o Playwright.
+
+Playwright passa a ser **dependência opcional declarada** (não entra no núcleo zero-dep, §3), só no caminho browser.
 
 ## 6. Onboarding em duas fases
 
@@ -402,3 +417,4 @@ Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais +
 | 40 | Origem de `plugin-validator`/`skill-reviewer` | §15 (toolchain plugin-dev) |
 | 42 | Playwright vs zero-dep | §3 (zero-dep = núcleo HTTP; Playwright declarado) |
 | 43 | Warm-up lap obrigatório + review de sinal verde antes do run full (sessão 2026-07-02: ADI = SPA/JS descoberto só na tentativa) | §9.1, §8 (skill `scrape-warmup` + asset `warmup.py`), §11 (Opus 4.8 `xhigh` revisor + advisor Sonnet 5) |
+| 44 | Plano 3 dividido: render por browser (3a, o bloqueio real = SPA/JS) construído; auth/token (3b) deferido YAGNI (usuário sem login) | §5.2 (`jemscrape/browser.py` + `drivers/playwright_render.py` + `fetch_mode`), §5.1 (3b deferido), §3 (Playwright = dep opcional) |
