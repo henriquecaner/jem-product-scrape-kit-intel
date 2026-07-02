@@ -6,11 +6,13 @@ from pathlib import Path
 
 from jemscrape.config import load_config, validate_config
 from jemscrape.authz import load_authorization, validate as validate_authz
+from jemscrape.warmup_gate import load_warmup_verdict, validate_warmup
 from jemscrape.pacing import Pacer
 
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
 AUTHZ_PATH = HERE / ".scrape-authorization.json"
+WARMUP_PATH = HERE / ".scrape-warmup.json"
 
 
 def build_pacer(cfg):
@@ -31,6 +33,12 @@ def preflight(config_path, authz_path, now):
     return cfg, auth
 
 
+def require_warmup(warmup_path, target_url, now):
+    """Fail-closed: raises WarmupError unless a green, unexpired, matching verdict exists."""
+    verdict = load_warmup_verdict(warmup_path)
+    validate_warmup(verdict, target_url, now)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="JEM scraper")
     parser.add_argument("--limit", type=int, default=0, help="max URLs (0 = all)")
@@ -41,6 +49,13 @@ def main(argv=None):
         cfg, _auth = preflight(CONFIG_PATH, AUTHZ_PATH, datetime.now(timezone.utc))
     except Exception as exc:  # fail-closed: no run without a valid gate
         print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        target_url = f"https://{cfg['target_domain']}/"
+        require_warmup(WARMUP_PATH, target_url, datetime.now(timezone.utc))
+    except Exception as exc:   # fail-closed: no full run without a green warm-up verdict
+        print(f"[gate] BLOCKED: warm-up not green — {exc}", file=sys.stderr)
         return 2
 
     # Site adaptation supplies discover() -> list[str] and parse(html, url) -> dict | None.

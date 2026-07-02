@@ -8,3 +8,7 @@ class AuthorizationError(Exception):
 
 class FetchError(Exception):
     """Raised when an HTTP fetch exhausts its retries."""
+
+
+class WarmupError(Exception):
+    """Raised when the warm-up verdict is missing, invalid, or not green — full run blocked."""

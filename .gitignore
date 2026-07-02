@@ -17,6 +17,7 @@ venv/
 *.secret
 .env
 .scrape-authorization.json
+.scrape-warmup.json
 
 # SDD progress ledger (scratch)
 .superpowers/
