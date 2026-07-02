@@ -4,6 +4,16 @@ Plugin do Claude Code da JEM Systems para o time scrapear catálogos de produtos
 
 **Status:** v1 — fundação de scraping (empacotada).
 
+## Documentação
+
+Novo por aqui? Comece pelos guias:
+
+- [O que é o plugin](docs/OVERVIEW.md) — visão geral pra quem não conhece o projeto.
+- [Setup da máquina](docs/SETUP.md) — passo a passo Windows e Mac, antes de começar.
+- [Primeiro scrape](docs/GETTING-STARTED.md) — do zero ao primeiro catálogo.
+
+Referência técnica: o design em [`docs/superpowers/specs/`](docs/superpowers/specs/) e os planos em [`docs/superpowers/plans/`](docs/superpowers/plans/).
+
 ## O que ele faz
 
 - **Gate de compliance fail-closed** — antes de qualquer scrape, valida a autorização (`.scrape-authorization.json`) e a matriz de precedência do `robots.txt`. Concorrente público + robots proíbe = bloqueio duro.
