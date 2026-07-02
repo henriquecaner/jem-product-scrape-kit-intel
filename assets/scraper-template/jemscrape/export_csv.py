@@ -10,6 +10,14 @@ CSV_COLUMNS = [
     "description_clean",
 ]
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_cell(value):
+    if isinstance(value, str) and value and value[0] in _FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
 
 def write_csv(records, path):
     buf = io.StringIO()
@@ -17,7 +25,8 @@ def write_csv(records, path):
     writer.writeheader()
     count = 0
     for rec in records:
-        writer.writerow(rec.to_row())
+        row = {k: _sanitize_cell(v) for k, v in rec.to_row().items()}
+        writer.writerow(row)
         count += 1
     atomic_write(path, buf.getvalue())
     return count

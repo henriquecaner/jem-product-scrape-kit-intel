@@ -1,5 +1,7 @@
 import csv
+import json
 
+import build_dataset
 from build_dataset import build
 
 
@@ -46,3 +48,74 @@ def test_build_handles_empty(tmp_path):
                     exports_dir=tmp_path / "exports")
     assert summary["normalized"] == 0 and summary["exported"] == 0
     assert (tmp_path / "exports" / "products.csv").exists()
+
+
+def test_main_success_writes_exports(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text(json.dumps([
+        _raw("M1", "Widget", ["Fire"], {"leeds": 3}, 10.0),
+    ]), encoding="utf-8")
+    out_dir = tmp_path / "exports"
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(out_dir),
+    ])
+
+    assert rc == 0
+    assert (out_dir / "products.csv").exists()
+    assert (out_dir / "wiki").exists()
+
+
+def test_main_missing_config_returns_2_no_traceback(tmp_path, capsys):
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text("[]", encoding="utf-8")
+    missing_cfg = tmp_path / "does_not_exist.json"
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(missing_cfg),
+        "--exports", str(tmp_path / "exports"),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "config" in captured.err.lower()
+
+
+def test_main_missing_target_domain_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"runtime": "local"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text("[]", encoding="utf-8")
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "target_domain" in captured.err.lower()
+
+
+def test_main_missing_records_file_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    missing_recs = tmp_path / "does_not_exist.json"
+
+    rc = build_dataset.main([
+        "--records", str(missing_recs),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""

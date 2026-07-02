@@ -51,3 +51,13 @@ def test_write_csv_empty_writes_header_only(tmp_path):
     assert n == 0
     text = out.read_text(encoding="utf-8")
     assert text.strip() == ",".join(CSV_COLUMNS)
+
+
+def test_write_csv_sanitizes_formula_injection_prefix(tmp_path):
+    out = tmp_path / "products.csv"
+    malicious_name = "=cmd|'/c calc'!A1"
+    write_csv([_rec("A1", malicious_name, 9.5), _rec("A2", "Normal Widget", 12.0)], out)
+    with out.open(newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    assert rows[0]["name"] == "'" + malicious_name
+    assert rows[1]["name"] == "Normal Widget"

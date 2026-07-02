@@ -5,6 +5,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from jemscrape.config import load_config
+from jemscrape.errors import ConfigError
 from jemscrape.normalize import normalize
 from jemscrape.dedup import collapse_stock, pick_price, collapse_variants
 from jemscrape.export_csv import write_csv
@@ -47,16 +49,43 @@ def build(raw_records, *, source_site, authorization_ref, scraped_at, exports_di
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Build canonical dataset + exports")
     parser.add_argument("--records", required=True, help="JSON file of raw_records")
+    parser.add_argument("--config", default=str(HERE / "config.json"),
+                         help="Path to config.json")
+    parser.add_argument("--exports", default=str(HERE / "exports"),
+                         help="Directory to write exports into")
     args = parser.parse_args(argv)
 
-    cfg = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
-    raws = json.loads(Path(args.records).read_text(encoding="utf-8"))
+    try:
+        cfg = load_config(args.config)
+    except ConfigError as exc:
+        print(
+            f"config not found or invalid: {exc}. "
+            "Copy config.json.example to config.json and set target_domain.",
+            file=sys.stderr,
+        )
+        return 2
+
+    source_site = cfg.get("target_domain")
+    if not isinstance(source_site, str) or not source_site.strip():
+        print(
+            "config is missing required key 'target_domain': "
+            "set target_domain in config.json.",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        raws = json.loads(Path(args.records).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        print(f"records file not found or invalid: {exc}.", file=sys.stderr)
+        return 2
+
     summary = build(
         raws,
-        source_site=cfg["target_domain"],
+        source_site=source_site,
         authorization_ref=cfg.get("authorization_ref", ""),
         scraped_at=datetime.now(timezone.utc).isoformat(),
-        exports_dir=HERE / "exports",
+        exports_dir=args.exports,
         band_priority=cfg.get("band_priority", []),
         hub_group=cfg.get("hub_group", []),
         ireland_branch=cfg.get("ireland_branch", ""),

@@ -59,3 +59,31 @@ def test_collapse_variants_none_list_price_is_infinity():
     records = [_rec("M1", None), _rec("M1", 12.0)]
     out = collapse_variants(records)
     assert out[0].list_price == 12.0   # the priced one wins over None
+
+
+def test_collapse_stock_coerces_string_values_like_ints():
+    by_loc_str = {"hub-real": "10", "hub-mirror-1": "10", "hub-mirror-2": "8",
+                  "leeds": "3", "ireland": "4"}
+    by_loc_int = {"hub-real": 10, "hub-mirror-1": 10, "hub-mirror-2": 8,
+                  "leeds": 3, "ireland": 4}
+    out_str = collapse_stock(by_loc_str, hub_group=HUB, ireland_branch="ireland")
+    out_int = collapse_stock(by_loc_int, hub_group=HUB, ireland_branch="ireland")
+    assert out_str == out_int
+
+
+def test_collapse_stock_garbage_value_treated_as_zero():
+    by_loc = {"leeds": "abc", "ireland": 2}
+    out = collapse_stock(by_loc, hub_group=HUB, ireland_branch="ireland")
+    assert out["uk"] == 0
+    assert out["ireland"] == 2
+    assert out["total"] == 2
+
+
+def test_pick_price_ignores_non_dict_entries():
+    prices = [{"band": "trade", "value": 10}, "junk"]
+    result = pick_price(prices, band_priority=["trade"])
+    assert result == {"band": "trade", "value": 10}
+
+
+def test_pick_price_all_non_dict_returns_none():
+    assert pick_price(["junk", 123, None], band_priority=["trade"]) is None

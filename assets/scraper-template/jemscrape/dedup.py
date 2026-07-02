@@ -1,4 +1,12 @@
+def _coerce_int(v):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 def collapse_stock(by_location, *, hub_group, ireland_branch):
+    by_location = {b: _coerce_int(v) for b, v in by_location.items()}
     hub = max((by_location[b] for b in hub_group if b in by_location), default=0)
     uk_others = sum(
         max(v, 0) for b, v in by_location.items()
@@ -10,6 +18,7 @@ def collapse_stock(by_location, *, hub_group, ireland_branch):
 
 
 def pick_price(prices, *, band_priority):
+    prices = [p for p in prices if isinstance(p, dict)]
     if not prices:
         return None
     ranked = []
