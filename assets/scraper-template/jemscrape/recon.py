@@ -16,6 +16,7 @@ class WarmupReport:
     auth_count: int
     antibot_count: int
     fetch_errors: int
+    parse_errors: int
     shape: dict
     per_url: list
     checklist: list
@@ -24,7 +25,7 @@ class WarmupReport:
         return asdict(self)
 
 
-def build_checklist(*, spa_count, auth_count, antibot_count, shape):
+def build_checklist(*, spa_count, auth_count, antibot_count, parse_errors, shape):
     items = []
     if spa_count:
         items.append("Site renderiza via JS (SPA): habilite o navegador/Playwright (Plano 3) — "
@@ -33,6 +34,9 @@ def build_checklist(*, spa_count, auth_count, antibot_count, shape):
         items.append("Login/paywall detectado: capture a sessão (storage_state) e logue no site antes do run.")
     if antibot_count:
         items.append("Anti-bot/geo detectado: configure proxy de país ou promova para VM (§5).")
+    if parse_errors:
+        items.append(f"{parse_errors} página(s) falharam ao parsear (parser/seletores incompletos) — "
+                     "ajuste o parser antes do run.")
     cov = shape.get("coverage", {})
     if cov and cov.get("price", 1) < 0.5:
         items.append("Cobertura de preço < 50%: confirme se o preço exige login ou ajuste o parser.")
@@ -45,7 +49,7 @@ def run_warmup(sample_urls, *, probe_fn, parse_fn, source_site,
                scraped_at, authorization_ref, raw_ref=""):
     per_url = []
     records = []
-    spa_count = auth_count = antibot_count = fetch_errors = fetched = 0
+    spa_count = auth_count = antibot_count = fetch_errors = fetched = parse_errors = 0
     for url in sample_urls:
         entry = {"url": url}
         try:
@@ -67,21 +71,32 @@ def run_warmup(sample_urls, *, probe_fn, parse_fn, source_site,
         if antibot["blocked"]:
             antibot_count += 1
         if render["mode"] == "server" and not auth["auth_required"] and not antibot["blocked"]:
-            raw = parse_fn(pr.body, url)
-            entry["parsed"] = bool(raw)
-            if raw:
-                records.append(normalize(
-                    raw, source_site=source_site, source_url=url,
-                    scraped_at=scraped_at, authorization_ref=authorization_ref,
-                    raw_ref=raw_ref))
+            try:
+                raw = parse_fn(pr.body, url)
+                entry["parsed"] = bool(raw)
+                if raw:
+                    records.append(normalize(
+                        raw, source_site=source_site, source_url=url,
+                        scraped_at=scraped_at, authorization_ref=authorization_ref,
+                        raw_ref=raw_ref))
+            except Exception as exc:
+                # A warm-up samples a site with an UNPROVEN parser: an
+                # incomplete parse dict (parse_fn returns partial data, or
+                # normalize()'s rec.validate() rejects it) is the expected
+                # failure mode here, not a fatal error. Record it per-URL and
+                # keep going so the rest of the sample's signal data survives.
+                parse_errors += 1
+                entry["parse_error"] = str(exc)
         per_url.append(entry)
     shape = analyze_shape(records)
     checklist = build_checklist(spa_count=spa_count, auth_count=auth_count,
-                                antibot_count=antibot_count, shape=shape)
+                                antibot_count=antibot_count, parse_errors=parse_errors,
+                                shape=shape)
     return WarmupReport(
         source_site=source_site, sampled=len(sample_urls), fetched=fetched,
         spa_count=spa_count, auth_count=auth_count, antibot_count=antibot_count,
-        fetch_errors=fetch_errors, shape=shape, per_url=per_url, checklist=checklist)
+        fetch_errors=fetch_errors, parse_errors=parse_errors, shape=shape,
+        per_url=per_url, checklist=checklist)
 
 
 def write_report(report, path):
