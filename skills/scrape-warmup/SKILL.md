@@ -12,7 +12,7 @@ This runs the mandatory warm-up lap (spec §9.1) and the green-light review that
 ## What this actually wraps
 
 - `assets/scraper-template/warmup.py` — the CLI. Runs the compliance gate first (`preflight`, fail-closed), then samples the site, then writes a recon report. Flags: `--sample <path to JSON list of URLs>`, `--config`, `--authz`, `--out`, `--render {http,browser}`.
-- `assets/scraper-template/jemscrape/recon.py` — `run_warmup` fetches each sample URL (dependency-injected `probe_fn`/`parse_fn`), runs the four detectors on it, and aggregates into a `WarmupReport`: `sampled`, `fetched`, `spa_count`, `auth_count`, `antibot_count`, `parse_errors`, `shape`, `per_url`, `checklist`.
+- `assets/scraper-template/jemscrape/recon.py` — `run_warmup` fetches each sample URL (dependency-injected `probe_fn`/`parse_fn`), runs the four detectors on it, and aggregates into a `WarmupReport`: `sampled`, `fetched`, `spa_count`, `auth_count`, `antibot_count`, `fetch_errors`, `parse_errors`, `shape`, `per_url`, `checklist`.
 - `assets/scraper-template/jemscrape/signals.py` — the four detectors:
   - **render** — server-rendered vs SPA/JS-only (empty HTML shell, `id="root"`/`id="app"`/framework markers, low visible-text ratio).
   - **auth/paywall** — login redirect, 401/403, password fields, "sign in to see price" style body markers.
@@ -77,3 +77,7 @@ This file is **gitignored** — it never gets committed, same treatment as `.scr
 ## The hard rule
 
 No full run without a green, unexpired, domain-matching verdict. `scrape.py`'s `require_warmup` calls `load_warmup_verdict` and `validate_warmup` before it does anything else, and it's fail-closed: missing file, wrong verdict, domain mismatch, missing timezone, or an expired `expires_at` all abort the run with a non-zero exit before a single URL is fetched. Same fail-closed design as the compliance gate: auto-declared, but enforced at runtime, not just checked by a human once.
+
+## References
+
+- `references/execution-strategy.md` — the 2-agent review roles (Opus 4.8 xhigh reviewer + Sonnet 5 advisor; never Haiku).

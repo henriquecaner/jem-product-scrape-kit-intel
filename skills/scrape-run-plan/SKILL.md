@@ -48,7 +48,7 @@ Pull risks straight from the warm-up's signals and the checklist it generated, p
 | Login / paywall detected | Content behind auth is invisible to the scrape | Capture a session (`storage_state`) before the run; treat as deferred/blocked until logged in |
 | Anti-bot challenge / geo-block | Requests get blocked or throttled | Route through a country proxy, or promote to the VM runtime |
 | Low field coverage (name/SKU/price/image) | Exports will have gaps | Fix the parser and re-run the warm-up before proceeding |
-| `robots_status: disallowed` | Compliance gate blocks the run | Apply the authorization-type precedence matrix (§10.2) — hard block for `public_competitor`, override only with `robots_override_ref` for `contracted_partner`/`own_account` |
+| `robots_status: disallowed` | Compliance gate blocks the run | Apply the authorization-type precedence matrix (§10.2) — hard block for `public_competitor`; override only with `robots_override_ref` for `contracted_partner`; `own_account` is allowed without one |
 
 Only list a risk if the warm-up or the authorization record actually surfaced it. A clean warm-up gets a short risk section, not a padded one.
 
@@ -93,3 +93,8 @@ A PDF render is a documented future enhancement, not something this skill does t
 - Approval required: yes/no
 - If yes: .scrape-approval.json <pending | written, with hash>
 ```
+
+## References
+
+- `references/estimation.md` — how ETA and cost are estimated (URL count × rate-limit floor; LLM cost ~zero for v1).
+- `references/execution-strategy.md` — cost levers (Batch only on Actions; deterministic parsing).

@@ -42,7 +42,7 @@ Three rules run before export, in this order:
 2. **Price by band priority** (`pick_price`). A product can carry several prices tagged with a `band` (e.g. a customer-specific band like `PLE-J015` vs. `universal`). `band_priority` in config is an ordered list — the first band in that list that the product has wins. Bands not listed rank last. Only one price survives per record.
 3. **Variant collapse** (`collapse_variants`). Records sharing the same `product_id` are variants of one product. Only one survives: whichever has the cheapest `list_price` (`None` sorts last, never wins). The survivor gets `multi_variant = True` so exports can flag it.
 
-All three are driven by config keys: `band_priority`, `hub_group`, `ireland_branch` (see `config.json.example`). Without a `band_priority` list, no price-band reduction happens and all prices from the raw record are kept as-is.
+All three are driven by config keys: `band_priority`, `hub_group`, `ireland_branch` — set them in `config.json` (the base `config.json.example` doesn't include them; the shape is in `dedup.py` and the `build_dataset` tests). Without a `band_priority` list, no price-band reduction happens and all prices from the raw record are kept as-is.
 
 ## The 17-column CSV
 
@@ -74,3 +74,7 @@ Unlike `data/` (the raw scrape cache, git-ignored — see `assets/project-skelet
 - A record failing `validate()` (missing `source_site`, `source_url`, `product_id`, or `name`) raises before export — fix the raw record or the scraper, not the exporter.
 - If stock totals look doubled, check whether a location was put in `hub_group` by mistake — hub members are max-collapsed, everything else sums.
 - If the wrong price band won, check the order of `band_priority` in config — first match wins, not "most specific."
+
+## References
+
+- `references/canonical-record.md` — the versioned JEM canonical record + the 17 CSV columns.

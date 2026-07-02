@@ -61,3 +61,7 @@ Give IT two things:
 - `assets/it-request/README.md`. It covers the same toolchain plus two things IT provisions at the org level, not per machine: a shared proxy account (only needed for geo-restricted targets) and the `ANTHROPIC_API_KEY` repo secret (only needed if LLM-assisted normalization is in use). Note in that file: the project repo must be private.
 
 IT does not need to touch anything else. GitHub login and `gh auth` are the user's job in Fase B.
+
+## References
+
+- `references/windows-toolchain.md` — winget IDs, the Desktop PATH fix, and what IT installs on locked-down Windows.

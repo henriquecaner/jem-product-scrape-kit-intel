@@ -42,7 +42,7 @@ If the toolchain green check hasn't passed on this machine, send the operator to
 
 6. **Run-plan.** Invoke `scrape-run-plan`: present scope, ETA, cost, and risks (built from the warm-up's evidence). If the authorization requires approval, get the sign-off before running.
 
-7. **Run.** Start the scrape only with a GREEN warm-up verdict and (if required) approval. Local runs `scrape.py` now; Actions deploys the workflow (`deploy_actions` sets the secrets, the workflow runs on cron with checkpointing). `scrape.py` re-checks both gates itself, fail-closed — so even a skipped wizard can't run an unauthorized or un-warmed scrape.
+7. **Run.** Start the scrape only with a GREEN warm-up verdict and (if required) approval. Local runs `scrape.py` now. For the Actions runtime: `deploy_actions` builds the `gh secret set` commands that push the gate files as repo secrets, and the workflow template (`assets/github-actions/scrape.yml`) is what runs on cron with checkpointing once it's placed in `.github/workflows/`. `scrape.py` re-checks both gates itself, fail-closed — so even a skipped wizard can't run an unauthorized or un-warmed scrape.
 
 8. **Normalize + export.** Invoke `scrape-normalize-export`: build the canonical dataset → `exports/products.csv` + `exports/wiki/`.
 
@@ -54,3 +54,8 @@ If the toolchain green check hasn't passed on this machine, send the operator to
 - **The compliance gate is fail-closed** and runs again at runtime; a hard block means stop, not work around.
 - **Talk to the operator in their language**, in plain terms. When a gate blocks or a step needs their action, say exactly what to do next.
 - **Never commit secrets** (`.scrape-authorization.json`, `.scrape-warmup.json`) — they're gitignored and reconstructed from Actions secrets at runtime.
+
+## References
+
+- `references/execution-strategy.md` — models/efforts per step (never Haiku; Sonnet 5 economical; Opus xhigh for audit/review).
+- `references/runtime-github-actions.md` — the unattended Actions runtime (secrets → gates, cron, checkpoint, artifact).

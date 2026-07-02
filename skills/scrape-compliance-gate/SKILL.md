@@ -90,3 +90,8 @@ This calls `preflight(config.json, .scrape-authorization.json, now)`, which load
 `scrape.py main()` calls the identical `preflight()` before any fetch happens, every run, local or in GitHub Actions. There is no flag to bypass it and no code path that scrapes without a fresh, passing authorization. The gate is fail-closed: a missing file, an expired date, a domain mismatch, or a robots violation aborts the run with a non-zero exit before a single request goes out.
 
 The gate is auto-declaration by design — it trusts whoever writes the JSON, matching JEM's internal threat model. It does not verify the approver's identity or check external records. Projects handling more sensitive targets add a run-plan approval step (`.scrape-approval.json`, tracked in a later plan) on top of this gate; that layer hardens the process, it doesn't replace this one.
+
+## References
+
+- `references/anti-ban-playbook.md` — pacing floor, realistic UA, single-thread, dedicated low-privilege account.
+- `references/geo-proxy.md` — country-egress proxy for geo-restricted targets (and the browser-path caveat).
