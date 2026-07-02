@@ -1,5 +1,7 @@
 # Raw scrape cache — heavy + may hold scraped third-party content. Never commit.
-data/
+# Root-anchored: an UNanchored `data/` would also ignore exports/wiki/data/... (a
+# product category named "data"), silently dropping deliverables. Keep the slash.
+/data/
 
 # Secrets / gate files — reconstructed from Actions secrets at runtime, never committed.
 .scrape-authorization.json

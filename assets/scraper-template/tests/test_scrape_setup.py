@@ -13,6 +13,13 @@ def test_setup_ready_returns_0(capsys):
     assert "READY" in capsys.readouterr().out
 
 
+def test_setup_ready_with_only_optional_missing_returns_0(capsys):
+    # playwright (optional) missing but all REQUIRED present -> still ready (exit 0).
+    rc = scrape_setup.main([], which=_which({"git", "gh", "python3"}))
+    assert rc == 0
+    assert "READY" in capsys.readouterr().out
+
+
 def test_setup_missing_required_returns_1_with_kit(capsys):
     rc = scrape_setup.main([], which=_which({"python3"}))   # git, gh missing
     assert rc == 1
