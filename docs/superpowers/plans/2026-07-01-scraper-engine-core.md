@@ -1396,9 +1396,9 @@ git commit -m "feat: scrape.py CLI with runtime gate + fail-closed smoke test + 
 - `schema_version` in manifest (§7) → Task 6. ✓
 - Humanized pacing + coffee breaks + floor (§5, anti-ban) → Task 3. ✓
 - 429-aware backoff (anti-ban) → Task 4. ✓
-- Canary `--limit` (§9) → Task 8 argparse. ✓
+- Canary `--limit` (§9) → Task 8 argparse. ✓ (o canary foi absorvido pelo warm-up lap, §9.1 — o flag `--limit` continua valendo)
 - Smoke gate = `smoke_test.py`, terminology unified (§15) → Task 8. ✓
-- **Deferred to later plans (correctly out of scope):** discovery/sitemap + `parse_fn` (site-specific, referenced as `site_adapter.py`), normalize→canonical/exports CSV+wiki (Plan 2), Playwright auth path (Plan 3), Actions workflow (Plan 4), onboarding (Plan 5), plugin packaging (Plan 6). Noted in the plan intro.
+- **Deferred to later plans (correctly out of scope):** discovery/sitemap + `parse_fn` (site-specific, referenced as `site_adapter.py`), normalize→canonical/exports CSV+wiki (Plan 2), Playwright auth path (Plan 3), warm-up lap + review de sinal verde (Plan 4, §9.1), Actions workflow (Plan 5), onboarding (Plan 6), plugin packaging (Plan 7). Noted in the plan intro.
 
 **2. Placeholder scan:** No TBD/TODO; every code step contains complete runnable code; every test step shows the assertions. The only external reference is `site_adapter.py` (`discover`/`parse`), which is explicitly a per-site file produced by a later plan, not a placeholder within this plan's deliverable — `main` is untested for that path here by design (tested modules are the injected core).
 

@@ -213,7 +213,7 @@ Formatos de campo (`authorization_ref`, `related[]`, `attachments[]`) definidos 
 |---|---|---|
 | **VERDE** | Padrões consistentes, cobertura suficiente, sem bloqueio | Libera o run-plan → run full |
 | **AJUSTAR / REFATORAR** | Parser/selectors/config precisam mudar (drift, cobertura baixa, campo-chave faltando) | Volta pro scaffold, corrige, re-warm-up |
-| **PEDIR AJUDA** | Ação do operador obrigatória (login, extensão, Playwright/TI, proxy) ou decisão humana (robots ambíguo, ToS) | Pausa e pede — não roda cego |
+| **PEDIR AJUDA** | Ação do operador obrigatória (login, extensão, Playwright/TI, proxy) ou decisão humana (robots ambíguo, ToS) | Pausa e pede — não roda cego; **re-warm-up depois do preparo** (num site SPA o 1º warm-up via HTTP não mede o shape até o browser estar pronto) |
 
 **Gate final:** o run full libera só com veredito **VERDE** e, quando o projeto exigir, a aprovação do run-plan (§10.1). Reusa o padrão adversarial do `scrape-run-auditor` (§8), mas antes do run — não depois, quando o custo já foi gasto.
 
@@ -318,7 +318,7 @@ Segue a convenção do plugin `ahrefs-intel` (descrições ricas com triggers e 
 
 ## 15. Testes e qualidade
 
-Escada de validação em cada scrape: **canary (parse + paginação) → `smoke_test.py` por chunk (fail-close abaixo de um piso de taxa de parse — pega drift de selector) → `scrape-run-auditor`**. O run-plan documenta cobertura esperada; o auditor confere a real e o `notify.py` alerta em falha/travamento/token-expirado/cobertura-baixa (canal default = issue no repo). Terminologia unificada: o "smoke-gate" É o `smoke_test.py`. Para o plugin em si: os agentes `plugin-validator` e `skill-reviewer` (do toolchain `plugin-dev`) antes de publicar.
+Escada de validação em cada scrape: **warm-up lap (§9.1: recon dos 4 sinais + review de sinal verde, obrigatório, absorve o canary de parse + paginação) → `smoke_test.py` por chunk (fail-close abaixo de um piso de taxa de parse — pega drift de selector) → `scrape-run-auditor`**. O run-plan documenta cobertura esperada; o auditor confere a real e o `notify.py` alerta em falha/travamento/token-expirado/cobertura-baixa (canal default = issue no repo). Terminologia unificada: o "smoke-gate" É o `smoke_test.py`. Para o plugin em si: os agentes `plugin-validator` e `skill-reviewer` (do toolchain `plugin-dev`) antes de publicar.
 
 ## 16. Roadmap Camada 2 (interface pronta, build depois)
 

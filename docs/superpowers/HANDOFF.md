@@ -39,6 +39,8 @@ O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m
 6. **Onboarding** — skill `scrape-onboarding` + toolchain + kit pra TI + drivers.
 7. **Empacotamento do plugin** — `plugin.json`, SKILL.md, commands, references, agent, hooks.json.
 
+> Renumeração: o warm-up entrou como Plano 4, empurrando Actions→5, Onboarding→6, Packaging→7. A nota de traceability do doc do Plano 1 foi atualizada pra bater (sem drift).
+
 **Motivação do #4 (warm-up):** na sessão 2026-07-02, testando ADI (`adiglobaldistribution.us`), descobrimos SPA/JS-only + muro de login **só na tentativa** — o gate de compliance passou (robots permite `/Catalog/`+`/Product/`), mas fetch estático volta vazio. O warm-up teria cuspido isso antes de gastar o run.
 
 ## Processo e convenções
