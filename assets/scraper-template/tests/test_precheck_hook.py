@@ -50,6 +50,13 @@ def test_allows_non_bash_tool():
     assert rc == 0
 
 
+def test_blocks_git_add_of_session_file():
+    rc, err = _run({"tool_name": "Bash",
+                    "tool_input": {"command": "git add .scrape-session.json"}})
+    assert rc == 2
+    assert ".scrape-session.json" in err
+
+
 def test_allows_unparseable_event():
     p = subprocess.run([sys.executable, str(HOOK)],
                        input="{not json", capture_output=True, text=True)

@@ -6,6 +6,7 @@
 # Secrets / gate files — reconstructed from Actions secrets at runtime, never committed.
 .scrape-authorization.json
 .scrape-warmup.json
+.scrape-session.json
 *.token
 *.secret
 .env

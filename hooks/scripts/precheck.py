@@ -12,6 +12,7 @@ import sys
 _SECRET_MARKERS = (
     ".scrape-authorization.json",
     ".scrape-warmup.json",
+    ".scrape-session.json",
     ".env",
     ".token",
     ".secret",

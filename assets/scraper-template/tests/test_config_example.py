@@ -26,3 +26,9 @@ def test_example_includes_dataset_reconciliation_keys():
     assert cfg["band_priority"] == []
     assert cfg["hub_group"] == []
     assert cfg["ireland_branch"] == ""
+
+
+def test_config_example_documents_auth_fields():
+    cfg = _example()
+    assert "auth_required" in cfg
+    assert "login_url" in cfg
