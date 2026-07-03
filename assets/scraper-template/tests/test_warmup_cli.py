@@ -26,6 +26,38 @@ def _write_valid_gate_files(tmp_path):
     return cfg, authz
 
 
+def _auth_config(tmp_path, *, auth_required):
+    now = datetime.now(timezone.utc)
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({
+        "target_domain": "x.com", "runtime": "local",
+        "user_agent": "UA", "rate_limit_floor_seconds": 8,
+        "auth_required": auth_required, "login_url": "https://x.com/login",
+    }), encoding="utf-8")
+    authz = tmp_path / ".scrape-authorization.json"
+    authz.write_text(json.dumps({
+        "target_domain": "x.com", "authorization_type": "public_competitor",
+        "approver": "H", "approved_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=1)).isoformat(),
+        "rate_limit_floor_seconds": 8, "robots_status": "allowed",
+        "robots_override_ref": None, "requires_approval": False, "scope": "https://x.com/",
+    }), encoding="utf-8")
+    return cfg, authz
+
+
+def test_warmup_auth_required_missing_session_returns_2(tmp_path, capsys, monkeypatch):
+    # Build a minimal valid config with auth_required + a passing compliance gate.
+    cfg_path, authz_path = _auth_config(tmp_path, auth_required=True)
+    sample = tmp_path / "sample.json"
+    sample.write_text('["https://x.com/p"]', encoding="utf-8")
+    rc = __import__("warmup").main(
+        ["--sample", str(sample), "--config", str(cfg_path), "--authz", str(authz_path),
+         "--out", str(tmp_path / "out.json")],
+        parse_fn=lambda html, url: None)
+    assert rc == 2
+    assert "session" in capsys.readouterr().err.lower()
+
+
 def test_warmup_cli_success_writes_report(tmp_path):
     cfg, authz = _write_valid_gate_files(tmp_path)
     sample = tmp_path / "sample.json"

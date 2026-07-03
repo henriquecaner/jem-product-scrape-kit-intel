@@ -59,8 +59,11 @@ def _headers_to_dict(headers):
     return out
 
 
-def probe(url, *, user_agent, timeout=30, urlopen=_default_urlopen):
-    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+def probe(url, *, user_agent, cookie_header=None, timeout=30, urlopen=_default_urlopen):
+    headers = {"User-Agent": user_agent}
+    if cookie_header:
+        headers["Cookie"] = cookie_header
+    request = urllib.request.Request(url, headers=headers)
     try:
         resp = urlopen(request, timeout=timeout)
     except urllib.error.HTTPError as exc:

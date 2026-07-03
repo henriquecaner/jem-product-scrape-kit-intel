@@ -3,6 +3,7 @@ before the full run. Compliance gate runs first (fail-closed). No product scrapi
 beyond the sample; the two-agent green-light review is the scrape-warmup skill's job."""
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,13 @@ def main(argv=None, *, probe_fn=None, parse_fn=None, render_fn=None):
         print(f"[warmup] BLOCKED by compliance gate: {exc}", file=sys.stderr)
         return 2
 
+    from scrape import load_run_session
+    try:
+        session = load_run_session(cfg, HERE / ".scrape-session.json", now)
+    except Exception as exc:   # fail-closed: no authenticated warm-up without a valid session
+        print(f"[warmup] BLOCKED: session gate — {exc}", file=sys.stderr)
+        return 2
+
     try:
         urls = json.loads(Path(args.sample).read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -46,13 +54,18 @@ def main(argv=None, *, probe_fn=None, parse_fn=None, render_fn=None):
             from jemscrape.browser import make_browser_probe
             if render_fn is None:
                 from drivers.playwright_render import render as _render
-                render_fn = lambda url: _render(url, user_agent=cfg["user_agent"])
+                from jemscrape.proxy import proxy_dict_from_url
+                proxy = proxy_dict_from_url(os.environ.get("HTTPS_PROXY"))
+                storage = session.storage_state if session is not None else None
+                render_fn = lambda url: _render(url, user_agent=cfg["user_agent"],
+                                                proxy=proxy, storage_state=storage)
             probe_fn = make_browser_probe(render_fn)
         else:
             user_agent = cfg["user_agent"]
+            cookie_header = session.cookie_header(cfg["target_domain"]) if session is not None else None
 
             def probe_fn(url):
-                return http_probe(url, user_agent=user_agent)
+                return http_probe(url, user_agent=user_agent, cookie_header=cookie_header)
     if parse_fn is None:
         from site_adapter import parse as parse_fn   # per-site, created in scaffold
 
