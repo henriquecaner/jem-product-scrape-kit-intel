@@ -6,7 +6,9 @@ Gate de compliance: a checagem de autorização que roda antes e durante o scrap
 
 Warm-up (reconhecimento): uma volta de teste numa amostra pequena (10 a 50 produtos) antes do run cheio, pra descobrir como o site se comporta.
 
-Veredito (verde / ajustar / pedir ajuda): o resultado da revisão do warm-up. Só verde libera o run.
+Veredito (verde / ajustar / pedir ajuda): o resultado da revisão do warm-up. Só verde libera o run, e o verde tem validade e vale só pro site revisado. No arquivo que o motor confere, os três aparecem em inglês: `green`, `adjust`, `ask`.
+
+Adaptador do site (`site_adapter.py`): a parte específica de cada site, que sabe descobrir as páginas de produto e ler os campos delas. O assistente escreve esse arquivo quando cria o projeto; o resto do motor é igual pra todo site.
 
 SPA (site renderizado por JavaScript): um site cujo conteúdo só aparece depois que o navegador executa JavaScript. O fetch simples vê a página vazia; precisa do modo navegador.
 

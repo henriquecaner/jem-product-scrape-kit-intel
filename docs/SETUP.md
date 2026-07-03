@@ -58,6 +58,12 @@ gh auth login
 
 Siga as perguntas (GitHub.com, HTTPS, autenticar pelo navegador). Pra conferir depois: `gh auth status`.
 
+## Onde rodar o Claude Code
+
+Use o Claude Code no seu computador: o app Desktop ou o terminal, tanto faz. Os dois rodam local, e é disso que o scraping precisa (as ferramentas da máquina e a sua conexão de internet).
+
+O que não serve é o Claude Code na web (claude.ai/code): ele roda na nuvem, sem as ferramentas da sua máquina, e as requisições sairiam de um datacenter, que os sites tratam como robô na hora. Se você só tem o navegador, instale o app Desktop antes de continuar.
+
 ## Instalar o plugin
 
 Duas formas. Use a que quem distribui te passar.
@@ -71,7 +77,7 @@ No Claude Code:
 /plugin install jem-product-scrape-kit-intel@jem-internal
 ```
 
-O `<url-do-repo-do-plugin>` é o repositório privado do plugin; peça o link a quem distribui. O `jem-internal` é o nome do marketplace (definido no `.claude-plugin/marketplace.json`).
+O `<url-do-repo-do-plugin>` é o repositório privado do plugin; peça o link a quem distribui. Como o repositório é privado, a sua conta do GitHub precisa ter acesso a ele — peça o acesso junto com o link (é por isso que o `gh auth login` vem antes). O `jem-internal` é o nome do marketplace (definido no `.claude-plugin/marketplace.json`).
 
 ### Opção B — Zip no app Desktop
 

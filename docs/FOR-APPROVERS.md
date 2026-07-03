@@ -30,7 +30,9 @@ O caso mais restrito é concorrente público com robots proibindo: aí o plugin 
 
 Antes do run cheio, o plugin gera um plano com escopo, tempo estimado, custo e riscos, tudo baseado no que o warm-up encontrou no site, não em chute. Pra projetos que exigem aprovação, esse plano é o documento que você revisa e assina.
 
-A autorização tem um campo `requires_approval`. Quando ele é verdadeiro, o run só libera depois de registrar a aprovação (um marcador com o hash do plano e quem aprovou). Assim a aprovação fica amarrada a um plano específico, não a "um plano qualquer".
+A autorização tem um campo `requires_approval`. Quando ele é verdadeiro, o assistente só segue depois de registrar a aprovação (um marcador com o hash do plano e quem aprovou). Assim a aprovação fica amarrada a um plano específico, não a "um plano qualquer".
+
+Um limite pra deixar claro: hoje essa trava é do processo, não do motor. O assistente exige o registro antes de rodar, mas os gates que o motor verifica sozinho, em runtime, são dois: a autorização e o veredito do warm-up. O arquivo de aprovação ainda não é verificado pelo motor.
 
 ## O que fica registrado
 
