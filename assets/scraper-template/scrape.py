@@ -1,5 +1,6 @@
 """Generated scraper entry point. Runtime compliance gate lives in preflight()."""
 import argparse
+import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,7 +93,12 @@ def main(argv=None):
     summary = run(urls=urls, parse_fn=parse, cache_dir=cache_dir, fetcher=fetcher,
                   pacer=pacer, cursor=cursor, manifest=manifest, reparse=args.reparse)
     manifest.write(HERE / "exports" / "scrape_manifest.json")
-    print(f"[done] {summary}")
+    # Hand off to normalize/export: write the records file build_dataset consumes.
+    from jemscrape.cache import atomic_write
+    records_path = cache_dir / "raw_records.json"
+    atomic_write(records_path, json.dumps(manifest.records_for_build(cache_dir),
+                                          ensure_ascii=False, indent=2))
+    print(f"[done] {summary}; records -> {records_path}")
     return 0
 
 

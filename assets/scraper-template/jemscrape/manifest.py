@@ -1,6 +1,6 @@
 import json
 
-from .cache import atomic_write
+from .cache import atomic_write, cache_path
 
 
 class Manifest:
@@ -24,6 +24,17 @@ class Manifest:
 
     def summary(self):
         return {"scraped": len(self.scraped), "skipped": len(self.skipped), "errors": len(self.errors)}
+
+    def records_for_build(self, cache_dir=None):
+        """Shape the scraped entries into the list build_dataset consumes:
+        [{"url", "raw", "raw_ref"}]. This is the handoff from a scrape run to
+        the normalize/export step. `raw_ref` is the cached HTML path when
+        cache_dir is given, else "" ."""
+        out = []
+        for entry in self.scraped:
+            raw_ref = str(cache_path(cache_dir, entry["url"])) if cache_dir is not None else ""
+            out.append({"url": entry["url"], "raw": entry["record"], "raw_ref": raw_ref})
+        return out
 
     def write(self, path):
         payload = {
