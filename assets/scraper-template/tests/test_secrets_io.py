@@ -43,3 +43,14 @@ def test_materialize_secret_custom_mode(tmp_path):
     dest = tmp_path / "s.json"
     materialize_secret("SEC", dest, env={"SEC": "data"}, mode=0o640)
     assert stat.S_IMODE(dest.stat().st_mode) == 0o640
+
+
+def test_materialize_secret_rejects_symlink_target(tmp_path):
+    real = tmp_path / "real.json"
+    real.write_text("pre-existing", encoding="utf-8")
+    link = tmp_path / "link.json"
+    link.symlink_to(real)
+    with pytest.raises(ConfigError):
+        materialize_secret("SEC", link, env={"SEC": "data"})
+    # the symlink target must be untouched
+    assert real.read_text(encoding="utf-8") == "pre-existing"

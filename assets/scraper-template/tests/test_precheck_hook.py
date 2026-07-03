@@ -61,3 +61,31 @@ def test_allows_unparseable_event():
     p = subprocess.run([sys.executable, str(HOOK)],
                        input="{not json", capture_output=True, text=True)
     assert p.returncode == 0
+
+
+def test_blocks_git_add_with_flag_between_git_and_add():
+    # `git -C . add <secret>` must not bypass the adjacency-only regex.
+    rc, err = _run({"tool_name": "Bash",
+                    "tool_input": {"command": "git -C . add .scrape-authorization.json"}})
+    assert rc == 2
+    assert ".scrape-authorization.json" in err.lower()
+
+
+def test_blocks_git_commit_with_config_flag_before_commit():
+    rc, err = _run({"tool_name": "Bash",
+                    "tool_input": {"command": "git -c user.name=x commit .env"}})
+    assert rc == 2
+
+
+def test_blocks_git_add_marker_case_insensitive():
+    rc, err = _run({"tool_name": "Bash",
+                    "tool_input": {"command": "git add .SCRAPE-AUTHORIZATION.JSON"}})
+    assert rc == 2
+
+
+def test_blocks_git_add_shell_quote_split_marker():
+    # Shell quote-removal joins `.scrape-authorization''.json` into the real
+    # filename before git ever sees it; shlex.split must resolve the same way.
+    rc, err = _run({"tool_name": "Bash",
+                    "tool_input": {"command": "git add .scrape-authorization''.json"}})
+    assert rc == 2

@@ -19,7 +19,12 @@ def patch_claude_settings(path, *, env):
     current_env = settings.get("env")
     if not isinstance(current_env, dict):
         current_env = {}
-    current_env.update(env)
+    for key, value in env.items():
+        # Don't let an empty/blank incoming value (e.g. a PATH read as "" in a
+        # broken shell) clobber a previously-good existing value.
+        if not value and current_env.get(key):
+            continue
+        current_env[key] = value
     settings["env"] = current_env
     atomic_write(p, json.dumps(settings, indent=2) + "\n")
     return settings

@@ -47,3 +47,17 @@ def test_workflow_push_failure_fails_the_step():
 def test_workflow_materializes_session_secret():
     assert "SCRAPE_STORAGE_STATE" in WF_TEXT
     assert "secrets.SCRAPE_STORAGE_STATE" in WF_TEXT
+
+
+def test_workflow_checkpoint_distinguishes_nothing_staged_from_real_failure():
+    # A real commit failure (GPG/lock/disk) must not be masked as "no changes".
+    assert "git diff --cached --quiet" in WF_TEXT
+    assert 'git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"' not in WF_TEXT
+
+
+def test_workflow_checkpoint_commit_failure_notifies_and_exits():
+    commit_i = WF_TEXT.index('git commit -m "checkpoint')
+    tail = WF_TEXT[commit_i:commit_i + 300]
+    assert "notify.py" in tail and "exit 1" in tail
+    # the old blanket swallow must be gone
+    assert 'git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"' not in WF_TEXT

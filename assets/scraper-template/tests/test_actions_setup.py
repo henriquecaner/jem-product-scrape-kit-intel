@@ -46,3 +46,28 @@ def test_target_builder_omits_session_when_public(tmp_path):
     targets = actions_setup.build_targets({"auth_required": False}, base=tmp_path)
     names = [t[0] for t in targets]
     assert "SCRAPE_STORAGE_STATE" not in names
+
+
+def test_broken_config_blocks_instead_of_defaulting_to_empty(tmp_path, monkeypatch, capsys):
+    # A config.json that fails to load must fail-closed (BLOCKED, exit 2), not
+    # silently become {} and let build_targets treat the run as non-auth.
+    bad_config = tmp_path / "config.json"
+    bad_config.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(actions_setup, "HERE", tmp_path)
+    env = {"SCRAPE_AUTHORIZATION": "{}", "SCRAPE_WARMUP": "{}"}
+    rc = actions_setup.main(env=env)
+    assert rc == 2
+    assert "BLOCKED" in capsys.readouterr().err
+
+
+def test_materialize_oserror_is_blocked_not_a_traceback(tmp_path, capsys, monkeypatch):
+    a = tmp_path / ".scrape-authorization.json"
+
+    def boom(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(actions_setup, "materialize_secret", boom)
+    rc = actions_setup.main(env={"SCRAPE_AUTHORIZATION": "{}"},
+                            targets=[("SCRAPE_AUTHORIZATION", a)])
+    assert rc == 2
+    assert "BLOCKED" in capsys.readouterr().err

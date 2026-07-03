@@ -27,14 +27,15 @@ def main(argv=None, *, env=None, targets=None, config=None):
             from jemscrape.config import load_config
             try:
                 config = load_config(HERE / "config.json")
-            except Exception:
-                config = {}
-        targets = build_targets(config)
+            except Exception as exc:
+                print(f"[actions-setup] BLOCKED: cannot read config: {exc}", file=sys.stderr)
+                return 2
+        targets = build_targets(config, base=HERE)
     written = []
     for name, path in targets:
         try:
             materialize_secret(name, path, env=env)
-        except ConfigError as exc:
+        except (ConfigError, OSError) as exc:
             print(f"[actions-setup] BLOCKED: {exc}", file=sys.stderr)
             return 2
         written.append(str(path))

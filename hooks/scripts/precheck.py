@@ -7,6 +7,7 @@ runtime gate (§10) — this is a belt on top. Parse failures allow (the .gitign
 shim in hooks.json."""
 import json
 import re
+import shlex
 import sys
 
 _SECRET_MARKERS = (
@@ -17,6 +18,8 @@ _SECRET_MARKERS = (
     ".token",
     ".secret",
 )
+# Kept as an additional signal alongside the token-based check below: it still
+# catches the plain-adjacency case cheaply, but tokens are what actually decide.
 _GIT_STAGE = re.compile(r"\bgit\s+(?:add|commit)\b")
 
 
@@ -25,13 +28,30 @@ def should_block(tool_name, tool_input):
     if tool_name != "Bash":
         return None
     command = (tool_input or {}).get("command", "") or ""
-    if not _GIT_STAGE.search(command):
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        tokens = command.split()
+    # shlex resolves shell quote-removal (e.g. `.scrape-authorization''.json`
+    # becomes the real filename token), and tolerates flags/config options
+    # between `git` and `add`/`commit` (e.g. `git -C . add`, `git -c k=v commit`)
+    # that the plain adjacency regex misses.
+    is_staging = (
+        ("git" in tokens and ("add" in tokens or "commit" in tokens))
+        or bool(_GIT_STAGE.search(command))
+    )
+    if not is_staging:
         return None
+    lowered_command = command.lower()
+    lowered_tokens = [t.lower() for t in tokens]
     for marker in _SECRET_MARKERS:
-        if marker in command:
+        if marker in lowered_command or any(marker in t for t in lowered_tokens):
             return (f"BLOCKED: '{marker}' looks like a scrape secret and must not be "
                     f"committed. It is reconstructed from an Actions secret at runtime "
                     f"(see the scaffold .gitignore / actions_setup.py).")
+    # Residual gap (defense-in-depth, not the guarantee): `git commit -a` names
+    # no file in the command, so an already-tracked secret can still slip past
+    # this check. The runtime gate + .gitignore are what actually stop it.
     return None
 
 

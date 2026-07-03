@@ -48,7 +48,11 @@ jobs:
           git config user.email "scrape-bot@users.noreply.github.com"
           mkdir -p state exports
           git add state exports
-          git commit -m "checkpoint: scrape run ${{ github.run_id }}" || echo "no changes to checkpoint"
+          if git diff --cached --quiet; then
+            echo "no changes to checkpoint"
+          else
+            git commit -m "checkpoint: scrape run ${{ github.run_id }}" || { python notify.py --kind error --message "checkpoint commit FAILED for run ${{ github.run_id }}"; exit 1; }
+          fi
           git pull --rebase --autostash || echo "rebase skipped"
           git push || { python notify.py --kind error --message "checkpoint push FAILED for run ${{ github.run_id }} - cursor may re-scrape"; exit 1; }
 
