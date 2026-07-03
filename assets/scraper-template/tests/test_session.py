@@ -103,3 +103,28 @@ def test_is_expired_false_when_no_expiry(tmp_path):
                         "path": "/", "expires": -1}], "origins": []}
     s = sess.load_session(_write(tmp_path, obj))
     assert s.is_expired(datetime.now(timezone.utc)) is False
+
+
+def test_bare_domain_cookie_does_not_match_subdomain(tmp_path):
+    # A host-only cookie for shop.example.com must NOT be sent to a narrower/other host.
+    obj = {"cookies": [{"name": "sid", "value": "abc", "domain": "example.com",
+                        "path": "/", "expires": -1}], "origins": []}
+    s = sess.load_session(_write(tmp_path, obj))
+    assert s.cookie_header("shop.example.com") == ""   # bare domain != subdomain
+    assert s.cookie_header("example.com") == "sid=abc"  # exact host matches
+
+
+def test_dot_domain_cookie_matches_subdomain(tmp_path):
+    obj = {"cookies": [{"name": "csrf", "value": "xyz", "domain": ".example.com",
+                        "path": "/", "expires": -1}], "origins": []}
+    s = sess.load_session(_write(tmp_path, obj))
+    assert s.cookie_header("shop.example.com") == "csrf=xyz"  # dot domain -> subdomain
+    assert s.cookie_header("example.com") == "csrf=xyz"       # and the apex
+
+
+def test_cookie_header_accepts_injected_clock(tmp_path):
+    from datetime import datetime, timezone
+    s = sess.load_session(_write(tmp_path, _storage_state(FUTURE)))
+    # A clock after the FUTURE expiry drops the sid cookie; only the session cookie remains.
+    later = datetime.fromtimestamp(FUTURE + 1, tz=timezone.utc)
+    assert s.cookie_header("shop.example.com", now=later) == "csrf=xyz"

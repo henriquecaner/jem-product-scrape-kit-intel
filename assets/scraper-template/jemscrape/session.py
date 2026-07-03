@@ -11,10 +11,13 @@ from .errors import SessionError
 
 def _domain_matches(cookie_domain, target):
     """Cookie domain rule: a leading-dot domain matches the host and any
-    subdomain; a bare domain matches that exact host."""
-    cd = (cookie_domain or "").lower().lstrip(".")
+    subdomain; a bare (host-only) domain matches that exact host only."""
+    raw = cookie_domain or ""
     target = (target or "").lower()
-    return target == cd or target.endswith("." + cd)
+    if raw.startswith("."):
+        cd = raw[1:].lower()
+        return target == cd or target.endswith("." + cd)
+    return target == raw.lower()
 
 
 class Session:
@@ -26,19 +29,21 @@ class Session:
     def storage_state(self):
         return self._raw
 
-    def cookie_header(self, domain):
-        now = datetime.now(timezone.utc).timestamp()
+    def cookie_header(self, domain, now=None):
+        if now is None:
+            now = datetime.now(timezone.utc)
+        now_ts = now.timestamp()
         parts = []
         for c in self._cookies:
             if not _domain_matches(c.get("domain"), domain):
                 continue
             expires = c.get("expires", -1)
-            if isinstance(expires, (int, float)) and expires > 0 and expires <= now:
+            if isinstance(expires, (int, float)) and expires > 0 and expires <= now_ts:
                 continue  # expired
             parts.append(f"{c['name']}={c['value']}")
         return "; ".join(parts)
 
-    def expires_at(self, now=None):
+    def expires_at(self):
         stamps = [c.get("expires") for c in self._cookies
                   if isinstance(c.get("expires"), (int, float)) and c.get("expires") > 0]
         if not stamps:
