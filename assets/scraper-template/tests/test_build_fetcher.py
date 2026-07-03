@@ -1,5 +1,8 @@
+import pytest
+
 import scrape
 from jemscrape.browser import RenderedResult
+from jemscrape.errors import ConfigError
 from jemscrape.session import Session
 
 
@@ -71,3 +74,13 @@ def test_browser_mode_render_fn_receives_storage_state():
         {"user_agent": "UA", "fetch_mode": "browser", "target_domain": "x.com"},
         http_fetch=lambda *a, **k: None, render_fn=fake_render, session=session)
     assert fetcher("https://x.com/p") == "<h1>r</h1>"
+
+
+def test_build_fetcher_browser_mode_malformed_proxy_raises_configerror(monkeypatch):
+    # A host-less HTTPS_PROXY (e.g. a broken Actions secret) must fail closed
+    # with a clean ConfigError, not an uncaught traceback from urlsplit.
+    monkeypatch.setenv("HTTPS_PROXY", "http://:8080")
+    with pytest.raises(ConfigError):
+        scrape.build_fetcher(
+            {"user_agent": "UA", "fetch_mode": "browser", "target_domain": "x.com"},
+            http_fetch=lambda *a, **k: None)

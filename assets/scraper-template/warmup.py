@@ -52,14 +52,18 @@ def main(argv=None, *, probe_fn=None, parse_fn=None, render_fn=None):
         mode = args.render or cfg.get("fetch_mode", "http")
         if mode == "browser":
             from jemscrape.browser import make_browser_probe
-            if render_fn is None:
-                from drivers.playwright_render import render as _render
-                from jemscrape.proxy import proxy_dict_from_url
-                proxy = proxy_dict_from_url(os.environ.get("HTTPS_PROXY"))
-                storage = session.storage_state if session is not None else None
-                render_fn = lambda url: _render(url, user_agent=cfg["user_agent"],
-                                                proxy=proxy, storage_state=storage)
-            probe_fn = make_browser_probe(render_fn)
+            try:
+                if render_fn is None:
+                    from drivers.playwright_render import render as _render
+                    from jemscrape.proxy import proxy_dict_from_url
+                    proxy = proxy_dict_from_url(os.environ.get("HTTPS_PROXY"))
+                    storage = session.storage_state if session is not None else None
+                    render_fn = lambda url: _render(url, user_agent=cfg["user_agent"],
+                                                    proxy=proxy, storage_state=storage)
+                probe_fn = make_browser_probe(render_fn)
+            except Exception as exc:   # fail-closed: e.g. a malformed HTTPS_PROXY secret
+                print(f"[warmup] BLOCKED: {exc}", file=sys.stderr)
+                return 2
         else:
             user_agent = cfg["user_agent"]
             cookie_header = session.cookie_header(cfg["target_domain"]) if session is not None else None

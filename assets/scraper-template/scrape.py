@@ -130,7 +130,11 @@ def main(argv=None):
     manifest = Manifest()
     pacer = build_pacer(cfg)
 
-    fetcher = build_fetcher(cfg, http_fetch=http_fetch, session=session)
+    try:
+        fetcher = build_fetcher(cfg, http_fetch=http_fetch, session=session)
+    except Exception as exc:   # fail-closed: e.g. a malformed HTTPS_PROXY secret
+        print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
+        return 2
 
     from jemscrape.errors import AuthExpiredError
     try:

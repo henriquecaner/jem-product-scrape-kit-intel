@@ -4,7 +4,7 @@ the actual Playwright driver lives in drivers/playwright_render.py."""
 from dataclasses import dataclass
 
 from .fetch import Probe
-from .errors import FetchError
+from .errors import FetchError, AuthExpiredError
 
 
 @dataclass
@@ -21,6 +21,11 @@ def make_browser_fetcher(render_fn):
             result = render_fn(url)
         except Exception as exc:
             raise FetchError(f"browser render failed for {url}: {exc}") from exc
+        if result.status in (401, 403):
+            # Match the HTTP path: a dead token aborts the run (runner propagates
+            # AuthExpiredError), rather than caching a login page as if it were product HTML.
+            raise AuthExpiredError(
+                f"auth failed ({result.status}) rendering {url}: session token expired")
         return result.html
     return fetcher
 

@@ -9,11 +9,6 @@ from jemscrape.errors import ConfigError
 
 HERE = Path(__file__).resolve().parent
 
-_SECRET_FILES = [
-    ("SCRAPE_AUTHORIZATION", HERE / ".scrape-authorization.json"),
-    ("SCRAPE_WARMUP", HERE / ".scrape-warmup.json"),
-]
-
 
 def build_targets(cfg, *, base=HERE):
     targets = [

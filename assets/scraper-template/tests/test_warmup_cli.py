@@ -104,6 +104,24 @@ def test_warmup_cli_missing_sample_returns_2(tmp_path):
     assert rc == 2
 
 
+def test_warmup_cli_browser_mode_malformed_proxy_returns_2(tmp_path, capsys, monkeypatch):
+    # A host-less HTTPS_PROXY (e.g. a broken Actions secret) must fail closed
+    # with a clean [warmup] BLOCKED message, not an uncaught traceback.
+    monkeypatch.setenv("HTTPS_PROXY", "http://:8080")
+    cfg, authz = _write_valid_gate_files(tmp_path)
+    sample = tmp_path / "sample.json"
+    sample.write_text(json.dumps(["https://example.com/product/1"]), encoding="utf-8")
+    out = tmp_path / "r.json"
+
+    rc = warmup.main(
+        ["--sample", str(sample), "--config", str(cfg), "--authz", str(authz),
+         "--out", str(out), "--render", "browser"],
+        parse_fn=lambda body, url: None)
+
+    assert rc == 2
+    assert "[warmup] BLOCKED" in capsys.readouterr().err
+
+
 def test_warmup_cli_browser_mode_uses_render_fn(tmp_path):
     cfg, authz = _write_valid_gate_files(tmp_path)
     sample = tmp_path / "sample.json"

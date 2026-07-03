@@ -3,7 +3,7 @@ import pytest
 
 from jemscrape.browser import RenderedResult, make_browser_fetcher, make_browser_probe
 from jemscrape.fetch import Probe
-from jemscrape.errors import FetchError
+from jemscrape.errors import FetchError, AuthExpiredError
 
 
 def test_make_browser_fetcher_returns_rendered_html():
@@ -19,6 +19,29 @@ def test_make_browser_fetcher_wraps_failure_in_fetcherror():
     fetcher = make_browser_fetcher(boom)
     with pytest.raises(FetchError):
         fetcher("https://x/p")
+
+
+def test_make_browser_fetcher_raises_auth_expired_on_401():
+    def fake_render(url):
+        return RenderedResult(status=401, html="<login/>", final_url=url)
+    fetcher = make_browser_fetcher(fake_render)
+    with pytest.raises(AuthExpiredError):
+        fetcher("https://x/p")
+
+
+def test_make_browser_fetcher_raises_auth_expired_on_403():
+    def fake_render(url):
+        return RenderedResult(status=403, html="<login/>", final_url=url)
+    fetcher = make_browser_fetcher(fake_render)
+    with pytest.raises(AuthExpiredError):
+        fetcher("https://x/p")
+
+
+def test_make_browser_fetcher_200_still_returns_html():
+    def fake_render(url):
+        return RenderedResult(status=200, html="<h1>ok</h1>", final_url=url)
+    fetcher = make_browser_fetcher(fake_render)
+    assert fetcher("https://x/p") == "<h1>ok</h1>"
 
 
 def test_make_browser_probe_builds_probe_from_rendered_result():
