@@ -15,9 +15,26 @@ _SECRET_FILES = [
 ]
 
 
-def main(argv=None, *, env=None, targets=None):
+def build_targets(cfg, *, base=HERE):
+    targets = [
+        ("SCRAPE_AUTHORIZATION", base / ".scrape-authorization.json"),
+        ("SCRAPE_WARMUP", base / ".scrape-warmup.json"),
+    ]
+    if cfg.get("auth_required"):
+        targets.append(("SCRAPE_STORAGE_STATE", base / ".scrape-session.json"))
+    return targets
+
+
+def main(argv=None, *, env=None, targets=None, config=None):
     env = os.environ if env is None else env
-    targets = _SECRET_FILES if targets is None else targets
+    if targets is None:
+        if config is None:
+            from jemscrape.config import load_config
+            try:
+                config = load_config(HERE / "config.json")
+            except Exception:
+                config = {}
+        targets = build_targets(config)
     written = []
     for name, path in targets:
         try:
