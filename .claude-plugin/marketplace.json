@@ -1,0 +1,12 @@
+{
+  "name": "jem-internal",
+  "owner": { "name": "JEM Systems" },
+  "plugins": [
+    {
+      "name": "jem-product-scrape-kit-intel",
+      "source": "./",
+      "description": "Compliance-first product scraping for the JEM team: authorization gate, mandatory warm-up lap, normalize, and export to CSV + wiki. Runs locally or on GitHub Actions.",
+      "version": "0.1.0"
+    }
+  ]
+}

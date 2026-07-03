@@ -21,3 +21,6 @@ venv/
 
 # SDD progress ledger (scratch)
 .superpowers/
+
+# Build artifacts (plugin zip)
+dist/

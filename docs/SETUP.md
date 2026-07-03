@@ -60,7 +60,26 @@ Siga as perguntas (GitHub.com, HTTPS, autenticar pelo navegador). Pra conferir d
 
 ## Instalar o plugin
 
-Peça acesso ao repositório privado do plugin (`jem-product-scrape-kit-intel`). Com o repo em mãos, adicione ele como plugin no Claude Code. A forma exata depende de como a JEM distribui (marketplace interno ou repositório clonado localmente); em dúvida, pergunte a quem cuida do plugin. Depois de instalar, reinicie o Claude Code pra ele carregar as skills e os comandos.
+Duas formas. Use a que quem distribui te passar.
+
+### Opção A — Marketplace
+
+No Claude Code:
+
+```
+/plugin marketplace add <url-do-repo-do-plugin>
+/plugin install jem-product-scrape-kit-intel@jem-internal
+```
+
+O `<url-do-repo-do-plugin>` é o repositório privado do plugin; peça o link a quem distribui. O `jem-internal` é o nome do marketplace (definido no `.claude-plugin/marketplace.json`).
+
+### Opção B — Zip no app Desktop
+
+1. Baixe o arquivo `jem-product-scrape-kit-intel-<versão>.zip` (quem distribui te envia; ele é gerado por `scripts/build-plugin-zip.sh`).
+2. No app Desktop do Claude Code, instale o plugin a partir do zip, na área de plugins. O caminho exato do menu varia por versão do app.
+3. Reinicie o Claude Code.
+
+Depois de instalar (por qualquer opção), reinicie o Claude Code. As 6 skills e os 3 comandos (`/scrape-setup`, `/scrape-init`, `/scrape-status`) passam a ficar disponíveis.
 
 ## Rodar o green check
 
