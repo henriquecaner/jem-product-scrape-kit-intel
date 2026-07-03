@@ -43,6 +43,20 @@ Nunca Haiku. Tier econômico: Sonnet 5 medium. Opus xhigh pra auditoria e pro re
 
 Dois gates travam o run, e a garantia vive no runtime, não só no hook: o gate de compliance (`scrape.py` preflight, que reusa `smoke_test.py`) e o veredito do warm-up (`scrape.py` `require_warmup`). Os arquivos de gate são gitignored e reconstruídos de secrets no Actions. Não afrouxe isso.
 
+## Lançar uma versão
+
+1. Suba a versão em `.claude-plugin/plugin.json` **e** em `.claude-plugin/marketplace.json` — as duas precisam bater.
+2. Atualize o `CHANGELOG.md`.
+3. Rode `scripts/build-plugin-zip.sh` (gera `dist/jem-product-scrape-kit-intel-<versão>.zip`; o `dist/` é gitignored).
+4. Tag e release com o zip anexado:
+
+```bash
+git tag vX.Y.Z && git push origin vX.Y.Z
+gh release create vX.Y.Z dist/jem-product-scrape-kit-intel-X.Y.Z.zip --title "vX.Y.Z" --notes "..."
+```
+
+Quem instala pelo marketplace pega a versão da `main`; quem instala pelo zip pega o release. Por isso o release sai sempre depois do push.
+
 ## Processo
 
 O projeto foi construído por SDD (subagent-driven development): cada plano vira tasks TDD, com review por-task e um review de branch inteira no fim. Specs em `docs/superpowers/specs/`, planos em `docs/superpowers/plans/`. Commits terminam com o trailer `Co-Authored-By`.

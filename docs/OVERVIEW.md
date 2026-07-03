@@ -32,6 +32,8 @@ O warm-up existe porque a gente aprendeu na prática. Testando um distribuidor, 
 - Local, na sua máquina, pra sites públicos e avulsos.
 - No GitHub Actions, agendado, pra runs que precisam rodar sozinhos (com proxy de país quando o site é geo-restrito).
 
+Você não precisa decidir isso sozinho: o assistente escolhe com você no começo do projeto, a partir do que você respondeu.
+
 ## O que está pronto e o que não está
 
 Pronto (v1): scraping de sites públicos (local e Actions), o warm-up, normalização e export, e o onboarding de máquina.

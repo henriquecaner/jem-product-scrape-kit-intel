@@ -26,6 +26,12 @@ Checkpoint (cursor): o ponto até onde o run já foi. Se cair no meio, retoma da
 
 Runtime: onde o scraping roda. Local (sua máquina) ou GitHub Actions (agendado, sozinho).
 
+Plano do run: o resumo que o assistente monta antes do run cheio, com escopo, tempo estimado, custo e riscos. Tudo vem do que o warm-up mediu no site, não de chute. Pra projetos que exigem aprovação, é esse documento que o aprovador revisa.
+
+Relatório do run (`exports/scrape_manifest.json`): a prestação de contas de um run — quantas páginas deram certo, quantas foram puladas e quantas deram erro.
+
+Auditoria: a conferência de cobertura e qualidade depois do run, feita pelo agente `scrape-run-auditor`. Diz se o dataset é confiável antes de ir pra loja, ou se vale re-scrapear uma parte.
+
 ## Perguntas frequentes
 
 Por que o plugin bloqueou meu scraping? Provavelmente o site é concorrente público e o robots.txt proíbe as páginas que você quer. Nesse caso é pra parar; não tem workaround.
@@ -33,6 +39,8 @@ Por que o plugin bloqueou meu scraping? Provavelmente o site é concorrente púb
 Preciso de login no site? Pra sites públicos, não. Scraping de site com login (captura de sessão) ainda não está pronto nesta versão; está documentado pra depois.
 
 Por que está lento? De propósito. O plugin roda pausado e uma requisição por vez, pra não derrubar nem irritar o site (e não queimar a conta). O tempo é dominado por esse ritmo, não pela velocidade da internet.
+
+Quanto tempo demora? Depende do tamanho do catálogo: no ritmo padrão, mil produtos levam algumas horas. O plano do run traz a estimativa pro seu caso, medida no warm-up.
 
 O CSV abre no Excel? Sim, e sem os furos comuns: sem linhas em branco entre produtos, e sem transformar um texto em fórmula por acidente.
 

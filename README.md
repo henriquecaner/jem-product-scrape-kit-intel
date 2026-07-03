@@ -1,58 +1,43 @@
 # jem-product-scrape-kit-intel
 
-Plugin do Claude Code da JEM Systems para o time scrapear catálogos de produtos (fornecedores e concorrentes) e normalizar pra loja, com compliance em primeiro lugar. Qualquer pessoa do time usa por um wizard guiado; o motor roda local ou no GitHub Actions.
+Plugin do Claude Code que ajuda o time da JEM a trazer catálogos de produtos de outros sites (fornecedores e concorrentes) pra loja, sem precisar saber programar e sem passar por cima das regras dos sites.
 
-**Status:** v1 — fundação de scraping (empacotada).
+Você conversa com um assistente que pergunta o que precisa, confere se o scraping é permitido, testa o site antes e só então roda. No fim, sai uma planilha pronta pro Excel e uma wiki com uma página por produto.
 
-## Documentação
+**Versão atual:** v0.1.0 ([release com o instalador](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.1.0)). Recém-publicada; estamos validando a instalação nas primeiras máquinas.
 
-Novo por aqui? Comece pelos guias:
+## Como começar
 
-- [O que é o plugin](docs/OVERVIEW.md) — visão geral pra quem não conhece o projeto.
-- [Setup da máquina](docs/SETUP.md) — passo a passo Windows e Mac, antes de começar.
+1. Prepare a máquina: [setup passo a passo](docs/SETUP.md), Windows e Mac. Diz o que instalar e o que pedir pra TI.
+2. No Claude Code, rode `/scrape-setup` e espere aparecer "READY".
+3. Rode `/scrape-init <endereço do site>` e siga o assistente: [guia do primeiro scrape](docs/GETTING-STARTED.md).
+
+Pra acompanhar um scrape em andamento: `/scrape-status`.
+
+## O que ele garante
+
+- **Não scrapeia o que não pode.** Antes de qualquer coisa, ele lê as regras do site (o robots.txt) e registra quem autorizou. Se não pode, ele para e explica. Não tem jeitinho, e é de propósito.
+- **Testa antes de gastar.** Um warm-up com 10 a 50 produtos descobre se o site precisa de navegador, se tem login ou se bloqueia robôs, antes do run de verdade.
+- **Não derruba o site.** O ritmo é devagar de propósito: uma página por vez, com pausas.
+- **Se cair, retoma.** O progresso fica salvo. Queda de conexão não faz recomeçar do zero.
+- **Sai pronto pra usar.** Um `products.csv` que abre no Excel sem sustos e uma wiki organizada por categoria.
+- **Pode rodar sozinho.** Pra scrapes agendados, ele roda no GitHub Actions, sem depender do seu computador ficar ligado.
+
+## Guias
+
+- [O que é o plugin](docs/OVERVIEW.md) — a visão geral, pra quem chegou agora.
+- [Setup da máquina](docs/SETUP.md) — o que instalar e o que é da TI.
 - [Primeiro scrape](docs/GETTING-STARTED.md) — do zero ao primeiro catálogo.
-- [Glossário e FAQ](docs/GLOSSARY.md) — termos em linguagem simples e perguntas comuns.
-- [Compliance pra quem aprova](docs/FOR-APPROVERS.md) — a matriz de robots, o plano do run, quando exige aprovação.
-- [Guia do desenvolvedor](docs/DEVELOPING.md) — pra quem for estender o motor ou adicionar um site.
+- [Glossário e FAQ](docs/GLOSSARY.md) — os termos em linguagem simples.
+- [Compliance pra quem aprova](docs/FOR-APPROVERS.md) — pra gestor ou jurídico decidir com segurança.
 
-Referência técnica: o design em [`docs/superpowers/specs/`](docs/superpowers/specs/) e os planos em [`docs/superpowers/plans/`](docs/superpowers/plans/).
+## Pra quem é do código
 
-## O que ele faz
-
-- **Gate de compliance fail-closed** — antes de qualquer scrape, valida a autorização (`.scrape-authorization.json`) e a matriz de precedência do `robots.txt`. Concorrente público + robots proíbe = bloqueio duro.
-- **Warm-up lap obrigatório** — antes do run cheio, amostra 10–50 produtos e detecta como o site se comporta (render server vs SPA/JS, login/paywall, anti-bot/geo, cobertura de campos). Um review de 2 agentes (Opus 4.8 `xhigh` + advisor Sonnet 5) dá o veredito; só o **verde** libera a largada.
-- **Motor resiliente** — fetch 429-aware, pacing humanizado, cache atômico com cursor de retomada.
-- **Normalização + export** — registro canônico versionado → `products.csv` (à prova de Excel) + wiki por breadcrumb; dedup de stock/preço/variantes.
-- **Caminho browser opcional** — Playwright pra sites SPA/JS (`fetch_mode: browser`), como dependência opcional.
-- **Runtime GitHub Actions** — workflow agendado que reconstrói os secrets, roda o gate, faz checkpoint e publica o export como artifact.
-
-## Como usar
-
-1. `/scrape-setup` — primeira vez: checa o toolchain (git, `gh`, Python, Playwright), corrige o PATH do Desktop e gera o kit pra TI se faltar algo.
-2. `/scrape-init <url>` — novo projeto: o wizard guiado conduz gate → warm-up → run-plan → run → export, perguntando um passo de cada vez.
-3. `/scrape-status` — progresso: cursor de retomada, log diário e (no Actions) o link do artifact.
-
-## Estrutura
-
-- `skills/` — as 6 skills (onboarding, wizard `scrape-product-catalog`, compliance-gate, warm-up, normalize-export, run-plan).
-- `commands/` — `/scrape-setup`, `/scrape-init`, `/scrape-status`.
-- `agents/scrape-run-auditor.md` — auditoria de cobertura/qualidade pós-scrape.
-- `hooks/` — guarda `PreToolUse` (defesa-em-profundidade: barra credencial indo pro git).
-- `assets/scraper-template/` — o motor (Python 3 stdlib), scaffoldado por projeto.
-- `references/` — decisões de runtime, canonical record, anti-ban, geo-proxy, estimativa.
-- `docs/superpowers/` — o design (spec) e os planos de implementação.
-
-## Desenvolvimento
+O motor é Python 3 só com a biblioteca padrão (Playwright é dependência opcional, do caminho de navegador) e roda local ou agendado no GitHub Actions. Arquitetura, testes, como adicionar um site e como lançar versão estão no [guia do desenvolvedor](docs/DEVELOPING.md). O design e os planos de implementação estão em [`docs/superpowers/`](docs/superpowers/).
 
 ```bash
 python3 -m venv .venv && .venv/bin/python -m pip install pytest
 .venv/bin/python -m pytest -q     # motor: 204 passando (+1 skip: smoke Playwright)
 ```
-
-O núcleo do motor é Python 3 stdlib-only; Playwright é dependência opcional, só no caminho browser.
-
-## Escopo
-
-**Nesta v1:** scraping público (local + Actions), warm-up, normalize/export, onboarding. **Deferido:** scraping autenticado + ciclo de token (Plano 3b), normalização assistida por LLM (Batch API), render do run-plan em PDF.
 
 Repositório interno JEM Systems. UNLICENSED.

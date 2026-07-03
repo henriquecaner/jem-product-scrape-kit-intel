@@ -73,15 +73,15 @@ Duas formas. Use a que quem distribui te passar.
 No Claude Code:
 
 ```
-/plugin marketplace add <url-do-repo-do-plugin>
+/plugin marketplace add henriquecaner/jem-product-scrape-kit-intel
 /plugin install jem-product-scrape-kit-intel@jem-internal
 ```
 
-O `<url-do-repo-do-plugin>` é o repositório privado do plugin; peça o link a quem distribui. Como o repositório é privado, a sua conta do GitHub precisa ter acesso a ele — peça o acesso junto com o link (é por isso que o `gh auth login` vem antes). O `jem-internal` é o nome do marketplace (definido no `.claude-plugin/marketplace.json`).
+O repositório do plugin é privado, então a sua conta do GitHub precisa ter acesso a ele. Se o primeiro comando falhar dizendo que não achou o repositório, peça o acesso a quem distribui (é por isso que o `gh auth login` vem antes).
 
 ### Opção B — Zip no app Desktop
 
-1. Baixe o arquivo `jem-product-scrape-kit-intel-<versão>.zip` (quem distribui te envia; ele é gerado por `scripts/build-plugin-zip.sh`).
+1. Baixe o arquivo `jem-product-scrape-kit-intel-<versão>.zip` na [página de releases](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases) do repositório, ou peça a quem distribui.
 2. No app Desktop do Claude Code, instale o plugin a partir do zip, na área de plugins. O caminho exato do menu varia por versão do app.
 3. Reinicie o Claude Code.
 

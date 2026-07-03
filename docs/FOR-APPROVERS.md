@@ -40,6 +40,13 @@ Um limite pra deixar claro: hoje essa trava é do processo, não do motor. O ass
 - O veredito do warm-up (`.scrape-warmup.json`): o sinal verde que libera o run, com validade e domínio.
 - O plano do run e, se exigido, a aprovação com hash.
 
+## O que conferir antes de aprovar
+
+- O tipo de relação declarado bate com a realidade? Se diz "fornecedor contratado", o contrato existe; se diz "conta própria", a conta é mesmo da JEM.
+- O escopo do plano cobre só o que foi pedido (categorias, marcas), sem sobra?
+- O status do robots.txt está registrado? Se for override de fornecedor, a referência do contrato (`robots_override_ref`) está preenchida?
+- A validade (`expires_at`) é curta o bastante pro caso? Autorização não é pra sempre; quando vence, o motor volta a bloquear.
+
 ## Limites honestos
 
 O gate é auto-declaração por design: ele confia no que a pessoa registra. É um controle interno, não uma barreira contra a própria JEM. A aprovação com hash existe pra endurecer projetos sensíveis. O rate-limit e o ritmo humano reduzem o risco de derrubar ou irritar o site, mas não substituem o bom senso sobre o que é razoável scrapear.
