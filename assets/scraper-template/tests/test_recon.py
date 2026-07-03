@@ -1,6 +1,6 @@
 import json
 
-from jemscrape.recon import run_warmup, write_report, WarmupReport
+from jemscrape.recon import build_checklist, run_warmup, write_report, WarmupReport
 from jemscrape.fetch import Probe
 from jemscrape.errors import FetchError
 
@@ -71,6 +71,16 @@ def test_run_warmup_records_parse_error_without_aborting():
     assert report.shape["count"] == 1
     bad_entry = next(e for e in report.per_url if e["url"] == "https://x/bad")
     assert "parse_error" in bad_entry
+
+
+def test_checklist_antibot_mitigation_matches_v1_runtimes():
+    # v1 has no VM runtime path (session/VM promotion is Plano 3b, deferred).
+    # The operator-facing mitigation must point at what exists: country proxy
+    # on the GitHub Actions runtime.
+    items = build_checklist(spa_count=0, auth_count=0, antibot_count=1,
+                            parse_errors=0, shape={})
+    assert any("proxy de país" in i for i in items)
+    assert not any("VM" in i for i in items)
 
 
 def test_write_report_roundtrips(tmp_path):

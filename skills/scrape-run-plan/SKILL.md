@@ -46,7 +46,7 @@ Pull risks straight from the warm-up's signals and the checklist it generated, p
 |---|---|---|
 | SPA / JS-rendered pages | HTTP-only fetch sees no product data | Switch `fetch_mode` to `browser` (Playwright) |
 | Login / paywall detected | Content behind auth is invisible to the scrape | Capture a session (`storage_state`) before the run; treat as deferred/blocked until logged in |
-| Anti-bot challenge / geo-block | Requests get blocked or throttled | Route through a country proxy, or promote to the VM runtime |
+| Anti-bot challenge / geo-block | Requests get blocked or throttled | Route through a country proxy on the GitHub Actions runtime (VM promotion is deferred with Plano 3b) |
 | Low field coverage (name/SKU/price/image) | Exports will have gaps | Fix the parser and re-run the warm-up before proceeding |
 | `robots_status: disallowed` | Compliance gate blocks the run | Apply the authorization-type precedence matrix (§10.2) — hard block for `public_competitor`; override only with `robots_override_ref` for `contracted_partner`; `own_account` is allowed without one |
 

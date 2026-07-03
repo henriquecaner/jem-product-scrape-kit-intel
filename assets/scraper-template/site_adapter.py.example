@@ -1,0 +1,36 @@
+"""Site adapter template — the only per-site file the engine needs.
+
+Copy this to site_adapter.py in the project root and implement the two
+functions. The engine imports them by name (`from site_adapter import
+discover, parse`):
+
+    discover(cfg) -> list[str]        product-page URLs to scrape
+    parse(html, url) -> dict | None   raw fields from one page (None = skip)
+
+Everything else (fetch, pacing, cache, resume, normalize, dedup, export,
+compliance/warm-up gates) is generic and reused as-is.
+"""
+
+
+def discover(cfg):
+    """Return the list of product URLs to scrape.
+
+    cfg is the loaded config.json dict (target_domain etc.). Typical sources:
+    the site's sitemap.xml or its category listing pages.
+    """
+    raise NotImplementedError(
+        "site_adapter.discover: copy site_adapter.py.example to site_adapter.py "
+        "and implement URL discovery for this site."
+    )
+
+
+def parse(html, url):
+    """Extract one product page into a raw dict, or None to skip the page.
+
+    Return the fields as found on the page (name, sku, prices, stock, image,
+    breadcrumb, ...); jemscrape.normalize maps them to the canonical record.
+    """
+    raise NotImplementedError(
+        "site_adapter.parse: copy site_adapter.py.example to site_adapter.py "
+        "and implement page parsing for this site."
+    )

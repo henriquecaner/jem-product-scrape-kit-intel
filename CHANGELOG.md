@@ -12,6 +12,8 @@ First packaged release of `jem-product-scrape-kit-intel` — a compliance-first 
 - Browser render adapter — optional Playwright path for SPA/JS sites (`fetch_mode: browser`); Playwright stays an optional dependency in `drivers/`.
 - GitHub Actions runtime — workflow template that reconstructs gate secrets, enforces the gate, checkpoints, and uploads the exports artifact.
 - Onboarding — toolchain green check, IT install kit, Desktop PATH fix, and the Actions deploy helper.
+- Site adapter template — `site_adapter.py.example` documents the per-site contract (`discover`/`parse`) and fails loud if copied unimplemented; `config.json.example` ships every key the pipeline reads (`fetch_mode`, `band_priority`, `hub_group`, `ireland_branch`).
+- Warm-up checklist points the anti-bot/geo mitigation at the country proxy on the Actions runtime (VM promotion is deferred with Plano 3b).
 
 **Plugin:**
 - Skills: `scrape-onboarding`, `scrape-product-catalog` (guided wizard), `scrape-compliance-gate`, `scrape-warmup`, `scrape-normalize-export`, `scrape-run-plan`.

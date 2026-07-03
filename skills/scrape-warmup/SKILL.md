@@ -34,7 +34,7 @@ This prints a summary line (`sampled=… fetched=… spa=… auth=… antibot=�
 
 - "Site renderiza via JS (SPA): habilite o navegador/Playwright — o fetch HTTP puro não enxerga produto."
 - "Login/paywall detectado: capture a sessão (storage_state) e logue no site antes do run."
-- "Anti-bot/geo detectado: configure proxy de país ou promova para VM."
+- "Anti-bot/geo detectado: configure proxy de país no runtime GitHub Actions."
 - "N página(s) falharam ao parsear — ajuste o parser antes do run."
 - "Cobertura de preço < 50%: confirme se o preço exige login ou ajuste o parser."
 

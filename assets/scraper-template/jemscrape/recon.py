@@ -33,7 +33,7 @@ def build_checklist(*, spa_count, auth_count, antibot_count, parse_errors, shape
     if auth_count:
         items.append("Login/paywall detectado: capture a sessão (storage_state) e logue no site antes do run.")
     if antibot_count:
-        items.append("Anti-bot/geo detectado: configure proxy de país ou promova para VM (§5).")
+        items.append("Anti-bot/geo detectado: configure proxy de país no runtime GitHub Actions (§5.3).")
     if parse_errors:
         items.append(f"{parse_errors} página(s) falharam ao parsear (parser/seletores incompletos) — "
                      "ajuste o parser antes do run.")

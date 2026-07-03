@@ -18,7 +18,7 @@ python3 -m venv .venv && .venv/bin/python -m pip install pytest
 .venv/bin/python -m pytest -q
 ```
 
-São 194 passando e 1 skip (o smoke do Playwright, que pula quando o Playwright não está instalado). O núcleo é stdlib-only, então os testes não fazem rede: tudo é injetado (fetcher, clock, urlopen, render_fn).
+São 204 passando e 1 skip (o smoke do Playwright, que pula quando o Playwright não está instalado). O núcleo é stdlib-only, então os testes não fazem rede: tudo é injetado (fetcher, clock, urlopen, render_fn).
 
 ## A regra que segura o projeto: stdlib-only no núcleo
 
@@ -30,6 +30,8 @@ O motor é genérico; cada site tem um adaptador. Um `site_adapter.py` expõe du
 
 - `discover(cfg) -> list[str]`: as URLs de produto a scrapear.
 - `parse(html, url) -> dict | None`: extrai o dict cru de uma página.
+
+Comece pelo stub: copie `site_adapter.py.example` (na raiz do template) para `site_adapter.py` no projeto e implemente as duas funções. Copiado sem implementar, ele falha alto com `NotImplementedError` em vez de devolver um catálogo vazio.
 
 O runner e o warm-up recebem essas funções por injeção. O resto (fetch, normalize, dedup, export, gates) é reaproveitado.
 

@@ -32,7 +32,7 @@ If the toolchain green check hasn't passed on this machine, send the operator to
    - Authenticated / very high volume → out of scope for now (Plano 3b deferred); say so.
    Tell the operator which runtime you chose and why.
 
-4. **Scaffold the project.** Copy `assets/scraper-template/` into a new `scrape-<site>/` project and adapt the site adapter (inspect one page to work out the product/list selectors). Use `assets/project-skeleton/.gitignore` so cache and secrets stay out of git.
+4. **Scaffold the project.** Copy `assets/scraper-template/` into a new `scrape-<site>/` project and write the site adapter: copy `site_adapter.py.example` to `site_adapter.py` and implement `discover`/`parse` (inspect one page to work out the product/list selectors). Use `assets/project-skeleton/.gitignore` so cache and secrets stay out of git.
 
 5. **Warm-up lap (mandatory).** Invoke `scrape-warmup`: sample 10-50 products, detect render mode / auth / anti-bot / parse-shape, then run the two-agent green-light review (Opus 4.8 `xhigh` reviewer + Sonnet 5 advisor). Act on the verdict:
    - **VERDE** → continue.

@@ -46,7 +46,7 @@ Referência técnica: o design em [`docs/superpowers/specs/`](docs/superpowers/s
 
 ```bash
 python3 -m venv .venv && .venv/bin/python -m pip install pytest
-.venv/bin/python -m pytest -q     # motor: 194 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # motor: 204 passando (+1 skip: smoke Playwright)
 ```
 
 O núcleo do motor é Python 3 stdlib-only; Playwright é dependência opcional, só no caminho browser.

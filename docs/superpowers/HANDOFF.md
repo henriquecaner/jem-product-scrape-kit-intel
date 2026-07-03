@@ -7,7 +7,7 @@ Estado do trabalho para retomar em outro terminal/sessão sem perder contexto.
 
 ## Onde estamos
 
-Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado. 197 testes passando (+1 skip: smoke Playwright).** Único item deferido: **Plano 3b — auth/token** (usuário sem login; ver §5.1). Design em rev7.
+Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado. 204 testes passando (+1 skip: smoke Playwright).** Único item deferido: **Plano 3b — auth/token** (usuário sem login; ver §5.1). Design em rev7.
 
 ## Pré-distribuição (2026-07-02)
 Preparado pra distribuir amanhã. Feito: **C — handoff scrape→export fiado** (`Manifest.records_for_build` + `scrape.py` grava `data/raw_records.json`, commit `0d2c98e`); **B — distribuição** (`.claude-plugin/marketplace.json` + `scripts/build-plugin-zip.sh` → `dist/*.zip`; SETUP.md com os 2 métodos; commit `7d77f6f`). Docs de usuário: OVERVIEW, SETUP, GETTING-STARTED, GLOSSARY, FOR-APPROVERS, DEVELOPING.
@@ -30,7 +30,7 @@ Planos: `.../scraper-engine-core.md` (1), `...normalize-export.md` (2), `...warm
 
 ```bash
 cd <repo>
-.venv/bin/python -m pytest -q     # 187 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # 204 passando (+1 skip: smoke Playwright)
 ```
 O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m venv .venv && .venv/bin/python -m pip install pytest`.
 

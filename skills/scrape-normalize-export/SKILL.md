@@ -42,7 +42,7 @@ Three rules run before export, in this order:
 2. **Price by band priority** (`pick_price`). A product can carry several prices tagged with a `band` (e.g. a customer-specific band like `PLE-J015` vs. `universal`). `band_priority` in config is an ordered list — the first band in that list that the product has wins. Bands not listed rank last. Only one price survives per record.
 3. **Variant collapse** (`collapse_variants`). Records sharing the same `product_id` are variants of one product. Only one survives: whichever has the cheapest `list_price` (`None` sorts last, never wins). The survivor gets `multi_variant = True` so exports can flag it.
 
-All three are driven by config keys: `band_priority`, `hub_group`, `ireland_branch` — set them in `config.json` (the base `config.json.example` doesn't include them; the shape is in `dedup.py` and the `build_dataset` tests). Without a `band_priority` list, no price-band reduction happens and all prices from the raw record are kept as-is.
+All three are driven by config keys: `band_priority`, `hub_group`, `ireland_branch` — set them in `config.json` (`config.json.example` ships them empty; the shape is in `dedup.py` and the `build_dataset` tests). Without a `band_priority` list, no price-band reduction happens and all prices from the raw record are kept as-is.
 
 ## The 17-column CSV
 
