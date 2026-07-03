@@ -59,5 +59,13 @@ def validate_config(cfg):
             if _is_number(floor) and lo < floor:
                 errors.append("min_delay_seconds must be >= rate_limit_floor_seconds")
 
+    auth_required = cfg.get("auth_required")
+    if auth_required is not None and not isinstance(auth_required, bool):
+        errors.append("auth_required: must be a boolean if set")
+    if auth_required is True:
+        login_url = cfg.get("login_url")
+        if not isinstance(login_url, str) or not login_url.strip():
+            errors.append("login_url: required non-empty string when auth_required is true")
+
     if errors:
         raise ConfigError("invalid config: " + "; ".join(errors))

@@ -74,3 +74,33 @@ def test_non_utf8_file_raises_config_error(tmp_path):
     p.write_bytes(b"\xff\xfe not utf8")
     with pytest.raises(ConfigError):
         load_config(p)
+
+
+def _base():
+    return {"target_domain": "x.com", "runtime": "local",
+            "user_agent": "UA", "rate_limit_floor_seconds": 2.5}
+
+
+def test_auth_required_must_be_bool():
+    cfg = _base()
+    cfg["auth_required"] = "yes"
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_auth_required_true_requires_login_url():
+    cfg = _base()
+    cfg["auth_required"] = True   # no login_url
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_auth_required_true_with_login_url_ok():
+    cfg = _base()
+    cfg["auth_required"] = True
+    cfg["login_url"] = "https://x.com/login"
+    validate_config(cfg)  # must not raise
+
+
+def test_auth_required_absent_is_fine():
+    validate_config(_base())  # unchanged public path
