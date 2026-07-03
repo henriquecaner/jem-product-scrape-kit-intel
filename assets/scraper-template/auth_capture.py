@@ -40,6 +40,10 @@ def main(argv=None):
         print(f"[auth-capture] {exc}", file=sys.stderr)
         return 2
 
+    # Live auth cookies -> restrict perms immediately (spec §4.6, §9; mirrors
+    # jemscrape/secrets_io.py's 0600 discipline).
+    os.chmod(out, 0o600)
+
     # Report validity + the secret push instruction (never auto-push).
     from jemscrape.session import load_session
     try:
