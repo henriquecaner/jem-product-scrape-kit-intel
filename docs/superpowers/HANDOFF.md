@@ -7,7 +7,18 @@ Estado do trabalho para retomar em outro terminal/sessão sem perder contexto.
 
 ## Onde estamos
 
-Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado. 204 testes passando (+1 skip: smoke Playwright).** Único item deferido: **Plano 3b — auth/token** (usuário sem login; ver §5.1). Design em rev7.
+Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado.** **Plano 3b (auth/token + geo) construído em 2026-07-03** (ver abaixo) — não há mais itens deferidos do roadmap original. 263 testes passando (+1 skip: smoke Playwright). Design em rev7.
+
+## Plano 3b — sessão autenticada + geo no Actions (2026-07-03) ✅
+
+Construído por SDD (7 grupos, review por-task em Sonnet 5 + review de branch inteira em Opus 4.8). Spec `docs/superpowers/specs/2026-07-03-auth-session-actions-design.md`; plano `docs/superpowers/plans/2026-07-03-auth-session.md`. Branch `plano-3b-auth-session` → mergeada na `main`.
+
+- `jemscrape/session.py` (parse do `storage_state`: cookie header RFC 6265, storage cru, validade do token separada do progresso), `jemscrape/proxy.py` (`HTTPS_PROXY` → dict de launch do Playwright).
+- Fail-closed em token morto: `AuthExpiredError` em 401/403 no HTTP (`fetch`) **e** no browser (`make_browser_fetcher`), sem retry; runner propaga sem marcar done; `scrape.py` faz flush dos records da invocação (`flush_outputs`), alerta e sai non-zero. Preflight de sessão em `scrape.py`/`warmup.py` (ausente/expirada → exit 2).
+- `drivers/auth_capture.py` + CLI `auth_capture.py` (captura headed local, proxy no launch, `.scrape-session.json` em 0600, imprime validade + `gh secret set`; nunca faz push). Secret `SCRAPE_STORAGE_STATE` condicional (`auth_required`) em `actions_setup.py`/`deploy_actions.py`/`scrape.yml`, via stdin nunca argv. Blindagem: gitignore + `precheck.py`. Config valida `auth_required`/`login_url`. `references/auth-session.md`.
+- Reviews pegaram e corrigiram: RFC 6265 no domain-match, flush de records no abort, 0600 na sessão, browser path não-fail-closed em 401/403, `ConfigError` de proxy sem gate, dead code.
+
+**⚠️ Follow-up de alta prioridade (achado da review de branch; fora do escopo 3b):** `raw_records.json`/`products.csv` são **sobrescritos** a cada run — `Manifest.records_for_build` só enxerga a invocação atual, e `build_dataset`/`export_csv` fazem overwrite, não merge. Um scrape encadeado por chunks (`--limit`) ou cron acumula **só o último chunk** no entregável. Latente desde o Plano 5 (`--limit`+cron), independente de auth, mas o fluxo auth+cron do 3b torna isso o **modo normal de operação**. Resolver (merge/append de records em `build_dataset`, lendo o cache `data/` versionado ou acumulando no commit) **antes de rodar auth (ou qualquer cron chunked) contra um catálogo maior que um chunk**, senão o CSV final perde tudo menos o último pedaço.
 
 ## Release (2026-07-03)
 **v0.1.0 publicada:** tag `v0.1.0` + release no GitHub com o zip anexado — https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.1.0. Link estável pra distribuição (repo privado: quem instala precisa de acesso). Pendências restantes: smoke de instalação (A abaixo), um scrape real ponta-a-ponta, smoke em Windows JEM.
@@ -33,7 +44,7 @@ Planos: `.../scraper-engine-core.md` (1), `...normalize-export.md` (2), `...warm
 
 ```bash
 cd <repo>
-.venv/bin/python -m pytest -q     # 204 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # 263 passando (+1 skip: smoke Playwright)
 ```
 O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m venv .venv && .venv/bin/python -m pip install pytest`.
 
@@ -48,16 +59,17 @@ O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m
 ## Roadmap restante (não começados)
 
 3a. ✅ **Browser render adapter** — FEITO (mergeado, head `d796b8f`). Playwright renderiza SPA/JS público; fecha o caminho browser do warm-up (`warmup.py --render browser`) e do scrape (`fetch_mode: browser`).
-3b. **Auth + token (deferido, YAGNI)** — captura de sessão via Playwright `storage_state`, ciclo de token, `gh secret`, refresh diário, promoção a VM (spec §5.1). Só quando houver alvo logado — usuário não tem login hoje.
+3b. ✅ **Auth + token + geo** — FEITO (mergeado 2026-07-03). Captura de sessão Playwright `storage_state`, replay HTTP/browser, `AuthExpiredError` fail-closed, preflight de sessão, `auth_capture` headed, secret `SCRAPE_STORAGE_STATE` condicional, proxy geo no launch, `references/auth-session.md`. Ver a seção "Plano 3b" no topo. Refresh de token automatizado sem interação e promoção a VM continuam fora (YAGNI até haver alvo que exija).
 4. ✅ **Warm-Up Lap** — FEITO (mergeado, head `3477421`). Código Python + gate no runtime. Falta só a skill `scrape-warmup` que orquestra o review de 2 agentes e escreve `.scrape-warmup.json` (vai junto do empacotamento, #7).
 5. ✅ **Runtime GitHub Actions** — FEITO (mergeado, head `87e71ad`). Workflow template + `secrets_io`/`actions_setup`/`notify` + gate no runtime + secrets→arquivos. Falta o **deploy automatizado** (`gh secret set` + push do workflow via API) que é da skill/driver de onboarding (#6).
 6. ✅ **Onboarding** — FEITO (mergeado, head `564055b`). Núcleo testável (green-check + kit-TI + fix de PATH + CLI `scrape_setup`) + assets (scaffold `.gitignore` **com `/data/` ancorado**, kit-TI) + `deploy_actions` (gh-secret builder). Blocker do Plano 5 (scaffold `.gitignore`) FECHADO. Skill markdown + commands → Plano 7.
 7. ✅ **Empacotamento do plugin** — FEITO (mergeado, head `7102681`). `.claude-plugin/plugin.json` + 6 skills (wizard guiado) + 3 commands + agent `scrape-run-auditor` + `hooks/` (guarda credencial-pro-git, 7 testes) + 7 references + README/CHANGELOG. Validado: `plugin-dev:plugin-validator` PASS (0 crítico); `plugin-dev:skill-reviewer` — 2 must-fix de grounding corrigidos (regra own_account+robots; overclaim do deploy_actions/cron) + references linkadas. **Plugin instalável.**
 
-## Deferido (único item aberto)
-- **Plano 3b — Auth + token** (§5.1): captura de sessão Playwright `storage_state`, ciclo de token, `gh secret`, refresh diário, promoção a VM. Só quando existir alvo logado (o usuário não tem login hoje). Ao construir, fiar o executor do `deploy_actions` mantendo o segredo no stdin do subprocess (ler `stdin_file`), nunca no argv.
+## Deferido / follow-ups abertos
+- **Refresh de token 100% automatizado + promoção a VM** (parte do 3b não construída, YAGNI): a captura é intrinsecamente local (só a máquina do usuário loga); sites que exigem re-login interativo dentro da vida do token disparam promoção a VM (dirigida pela TI, §19). Só construir quando houver alvo real que precise.
+- **⚠️ Acúmulo de records entre runs encadeados** (achado da review de branch do 3b, pré-existente do Plano 5): ver o ⚠️ na seção "Plano 3b" acima. `build_dataset`/export sobrescrevem em vez de acumular; cron/chunked entrega só o último chunk. Alta prioridade antes de rodar qualquer scrape multi-chunk (auth ou público) contra catálogo grande.
 
-> Numeração: warm-up = Plano 4 (Actions→5, Onboarding→6, Packaging→7; traceability do Plano 1 já bate). Plano 3 dividido em 3a (feito) e 3b (deferido), spec rev4 §5.2.
+> Numeração: warm-up = Plano 4 (Actions→5, Onboarding→6, Packaging→7; traceability do Plano 1 já bate). Plano 3 dividido em 3a e 3b, ambos feitos (spec rev4 §5.2 + spec 2026-07-03).
 
 **Motivação do #4 (warm-up):** na sessão 2026-07-02, testando ADI (`adiglobaldistribution.us`), descobrimos SPA/JS-only + muro de login **só na tentativa** — o gate de compliance passou (robots permite `/Catalog/`+`/Product/`), mas fetch estático volta vazio. O warm-up teria cuspido isso antes de gastar o run.
 

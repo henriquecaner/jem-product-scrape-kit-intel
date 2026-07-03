@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Plano 3b — sessão autenticada + geo no GitHub Actions
+
+Ponte entre a captura de sessão local e um run autenticado, geo-roteado e não supervisionado no Actions (spec §5.1). Ativado por `auth_required: true` no `config.json`.
+
+- `jemscrape/session.py` — parse do `storage_state` do Playwright: header `Cookie` para o caminho HTTP (domain-match RFC 6265), `storage_state` cru para o caminho browser, e validade do token (distinta do progresso, que segue no cursor).
+- `jemscrape/proxy.py` — traduz `HTTPS_PROXY` no dict de launch do Playwright (o caminho HTTP honra o env var via urllib; o browser exige o proxy no launch).
+- Fail-closed em token morto — `AuthExpiredError` em 401/403 no caminho HTTP (`fetch`) e no browser (`make_browser_fetcher`), sem retry; o runner propaga (não marca a URL como done), e o `scrape.py` faz flush dos records já coletados, alerta via `notify.py` e sai non-zero.
+- Preflight de sessão fail-closed em `scrape.py` e `warmup.py` (sessão ausente/expirada → exit 2, antes de qualquer fetch); warm-up autenticado valida a sessão antes do run cheio.
+- `drivers/auth_capture.py` + CLI `auth_capture.py` — captura headed local (proxy do país no launch), grava `.scrape-session.json` em 0600, imprime a validade e o comando `gh secret set`; nunca faz push automático.
+- Secret `SCRAPE_STORAGE_STATE` condicional (só quando `auth_required`) em `actions_setup.py`/`deploy_actions.py`/`scrape.yml`; empurrado por stdin, nunca argv.
+- Blindagem do segredo: `.scrape-session.json` no `.gitignore` do skeleton e no hook `precheck.py`.
+- `config.json` valida `auth_required`/`login_url`; `references/auth-session.md` documenta o ritual de refresh e o gatilho de promoção a VM.
+
+**Follow-up conhecido (fora do escopo 3b, pré-existente do Plano 5):** o `raw_records.json` e o `products.csv` são sobrescritos a cada run (manifest só da invocação atual), então um scrape encadeado por chunks/cron acumula só o último chunk. Latente desde o `--limit`+cron; o fluxo auth+cron do 3b torna isso o modo normal. Precisa ser resolvido (merge/append em `build_dataset`) antes de rodar auth contra um catálogo maior que um chunk.
+
 ## 0.1.0
 
 First packaged release of `jem-product-scrape-kit-intel` — a compliance-first product-scraping kit for the JEM team.
