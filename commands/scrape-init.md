@@ -9,9 +9,9 @@ Use the **scrape-product-catalog** skill as a **guided wizard** — the JEM oper
 
 Wizard sequence:
 
-1. **Understand the target** — ask for the URL, then: is this authorized (public competitor / contracted supplier / own account)? Does it need a specific country IP? Does it need to run on a schedule? Roughly how many products?
+1. **Understand the target** — ask for the URL, then: is this authorized (public competitor / contracted supplier / own account)? Does it require logging in (an account) to see products or prices? Does it need a specific country IP? Does it need to run on a schedule? Roughly how many products?
 2. **Compliance gate** (`scrape-compliance-gate`) — read the site's `robots.txt`, write/validate `.scrape-authorization.json`, confirm the robots precedence matrix. Fail-closed.
-3. **Choose the runtime** — local for public ad-hoc runs; GitHub Actions for scheduled and/or geo-restricted runs. Authenticated targets are out of scope (Plano 3b deferred) — say so and stop.
+3. **Choose the runtime** — local for public ad-hoc runs; GitHub Actions for scheduled and/or geo-restricted runs. Authenticated targets are supported: set `auth_required: true` + `login_url` in `config.json`, have the operator run `auth_capture.py` locally (headed Chromium — they log in, the session is saved to `.scrape-session.json` at 0600), and for the Actions runtime push it with `gh secret set SCRAPE_STORAGE_STATE < .scrape-session.json`; then re-run the warm-up authenticated. Capture is local-only (the runner never logs in) and stays fail-closed on token expiry (`AuthExpiredError`, no retry). Login on a public-competitor site is a bigger compliance flag — flag it, don't just proceed.
 4. **Scaffold** the project from `assets/scraper-template/` and write the site adapter (`site_adapter.py`: `discover` + `parse`) from an example page.
 5. **Warm-up lap** (`scrape-warmup`, MANDATORY) — sample 10–50 products, detect render/auth/anti-bot/shape, then run the 2-agent green-light review.
 6. **Run-plan** (`scrape-run-plan`) — present scope, ETA, cost, and risks; get sign-off if the authorization requires approval.

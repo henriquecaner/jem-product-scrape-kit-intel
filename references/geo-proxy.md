@@ -44,3 +44,10 @@ design spec, §9.1).
 The proxy is a paid service (residential UK pricing is roughly US$1.75+/GB in
 the design spec's estimate), but paced scraping (see `anti-ban-playbook.md`)
 uses little bandwidth per run.
+
+## See also
+
+For an authenticated + geo target, the same country proxy is passed to the
+headed session capture (`auth_capture.py`) so the login happens from the target
+country — otherwise the site may re-verify on a geo mismatch. See
+`auth-session.md`.

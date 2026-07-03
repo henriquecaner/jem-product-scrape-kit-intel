@@ -1,7 +1,8 @@
 # Runtime: GitHub Actions
 
-The sweet-spot runtime for public/geo/scheduled scraping without login
-(design spec §5, §5.3). Template: `assets/github-actions/scrape.yml`.
+The sweet-spot runtime for public or authenticated, geo/scheduled scraping
+with no interactive human present (design spec §5, §5.1, §5.3). Template:
+`assets/github-actions/scrape.yml`.
 
 ## Secrets -> gate files
 
@@ -14,8 +15,18 @@ Mechanism: `jemscrape/secrets_io.py` `materialize_secret(name, path, env=...)`
 reads the env var, and **fails closed** — raises `ConfigError` — if the secret
 is missing or blank. `actions_setup.py` catches that and exits non-zero
 (`exit 2`) with a `BLOCKED` message, before any fetch happens. Files are
-written with restrictive permissions (`0o600`, set at creation via `os.open`,
-not loosened by umask).
+written with restrictive permissions (`0o600`, set via `os.open` mode plus an
+`fchmod` before the first byte, with `O_NOFOLLOW` so a symlink can't redirect
+the write).
+
+For authenticated projects there is a third, **conditional** secret,
+`SCRAPE_STORAGE_STATE`, materialized to `.scrape-session.json` — but only when
+`config.json` has `auth_required: true`. `actions_setup.py`'s `build_targets`
+reads the config and adds it to the required set in that case; for a public
+project the secret is simply absent and never looked at. When it is required
+and missing, the same fail-closed `exit 2` applies before any fetch. The
+captured session is a live credential (see `auth-session.md`), so it gets the
+same 0600, gitignored, hook-guarded treatment as the other gate files.
 
 ## Workflow steps (`scrape.yml`)
 
@@ -61,9 +72,10 @@ where the last one stopped — including after a dropped/delayed cron run.
 ## Notify on failure
 
 `notify.py` formats and emits a GitHub annotation (`::error::` / `::warning::`)
-and is invoked on job failure, checkpoint push failure, or (future) detected
-conditions like token expiry or low parse coverage. Default channel is a
-repo issue.
+and is invoked on job failure, checkpoint push failure, or an auth-session
+expiry mid-run (a 401/403 raises `AuthExpiredError`, which `scrape.py` catches,
+flushes the records scraped so far, and reports via `notify.py` before exiting
+non-zero). Default channel is a repo issue.
 
 The `.yml` file is a **template**, scaffolded into a generated project's
 `.github/workflows/` — it is not an active workflow in the plugin repo itself.

@@ -19,6 +19,7 @@ Ele pergunta, um de cada vez:
 - Qual o site e o que você quer (categorias, marcas).
 - Qual a sua relação com o site: concorrente público, fornecedor com contrato, ou conta própria. Isso define o que o gate de compliance permite.
 - Quantos produtos, mais ou menos. Serve pra estimar o tempo do run.
+- Se o site exige login (conta) pra ver os produtos ou os preços.
 - Se precisa de IP de um país específico.
 - Se precisa rodar agendado, sozinho.
 
@@ -37,7 +38,7 @@ Com o gate passado, o assistente decide com você onde o scrape roda:
 - Na sua máquina: site público, run avulso. O caso comum.
 - No GitHub Actions: quando precisa rodar agendado, sozinho, ou sair de outro país (proxy). O assistente configura o repositório e os secrets por você.
 
-Site que exige login não está nesta versão; o assistente avisa e para.
+Site que exige login também roda. Você loga uma vez na sua máquina: o assistente abre uma janela de navegador (`auth_capture.py`), você entra na conta, e a sessão é salva num arquivo protegido (`.scrape-session.json`, permissão 0600, nunca vai pro Git). Pra runs agendados no Actions, essa sessão vira um secret (`SCRAPE_STORAGE_STATE`). O motor reusa a sessão nos runs seguintes e, quando o token expira no meio, ele para e avisa em vez de coletar a página de login — aí é só recapturar. A captura é sempre local: só a sua máquina faz login, o Actions nunca loga sozinho.
 
 ## 5. A pasta do projeto
 
@@ -51,7 +52,7 @@ Dois modelos revisam o resultado e dão um de três vereditos:
 
 - Verde: pode seguir.
 - Ajustar: o parser precisa de conserto. Ele arruma e roda o warm-up de novo.
-- Pedir ajuda: precisa de você. Por exemplo, o site é SPA e precisa habilitar o navegador (a TI instala o Playwright), ou tem login, ou precisa de proxy. Ele pausa, diz o que fazer, e depois refaz o warm-up.
+- Pedir ajuda: precisa de você. Por exemplo, o site é SPA e precisa habilitar o navegador (a TI instala o Playwright), ou tem login (você roda a captura de sessão com `auth_capture.py`), ou precisa de proxy. Ele pausa, diz o que fazer, e depois refaz o warm-up.
 
 O run de verdade só começa no verde. Mesmo que alguém pule o assistente, o motor recusa rodar sem o verde. O sinal verde tem validade e vale só pra aquele site; vencido, é refazer o warm-up.
 
@@ -85,7 +86,7 @@ A qualquer momento:
 /scrape-status
 ```
 
-Mostra quanto já foi feito, o log do dia, e (no Actions) o link pra baixar o resultado. Se o run pausou (warm-up não-verde ou vencido, autorização vencida, gate bloqueado), ele diz o motivo e o próximo passo.
+Mostra quanto já foi feito, o log do dia, e (no Actions) o link pra baixar o resultado. Se o run pausou (warm-up não-verde ou vencido, autorização vencida, gate bloqueado, ou sessão de login expirada), ele diz o motivo e o próximo passo.
 
 ## Quando algo dá errado
 
@@ -93,4 +94,5 @@ Mostra quanto já foi feito, o log do dia, e (no Actions) o link pra baixar o re
 - Gate bloqueou: o robots do site proíbe pra concorrente público. Não tem workaround; é pra parar.
 - Warm-up voltou "pedir ajuda: SPA": o site precisa de navegador. Peça pra TI instalar o Playwright, e o assistente refaz o warm-up no modo navegador.
 - Autorização ou sinal verde venceram: nada quebrou; o motor só recusa rodar. Renove a autorização (com quem aprova) ou refaça o warm-up.
+- Sessão de login expirou: o run para e avisa em vez de coletar página de login. Rode `auth_capture.py` de novo pra recapturar a sessão (e, no Actions, atualize o secret `SCRAPE_STORAGE_STATE`). O progresso não se perde: retoma de onde parou.
 - CSV com estoque dobrado ou preço errado: geralmente é config (`hub_group` ou `band_priority`). O assistente ajusta e reprocessa a partir do que já foi baixado; não precisa scrapear de novo.

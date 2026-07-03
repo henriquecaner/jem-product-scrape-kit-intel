@@ -29,7 +29,7 @@ If the toolchain green check hasn't passed on this machine, send the operator to
 3. **Choose the runtime.** Based on the answers (spec §5):
    - Public + ad-hoc → **Local**.
    - Geo and/or scheduled, no login → **GitHub Actions** (proxy for geo, cron for scheduling).
-   - Authenticated / very high volume → out of scope for now (Plano 3b deferred); say so.
+   - Authenticated → **supported** (spec §5.1): set `auth_required: true` + `login_url` in `config.json`; the operator runs `auth_capture.py` locally (headed browser, they log in, the session saves to `.scrape-session.json` at 0600); for Actions, push it as the `SCRAPE_STORAGE_STATE` secret. Capture is always local — the runner never logs in. Chunk auth runs to fit inside the token's life and expect a recurring local re-capture (the daily refresh ritual, `references/auth-session.md`). Very high volume or a site that forces interactive re-login inside the token's life → VM (IT-driven fallback, not automated).
    Tell the operator which runtime you chose and why.
 
 4. **Scaffold the project.** Copy `assets/scraper-template/` into a new `scrape-<site>/` project and write the site adapter: copy `site_adapter.py.example` to `site_adapter.py` and implement `discover`/`parse` (inspect one page to work out the product/list selectors). Use `assets/project-skeleton/.gitignore` so cache and secrets stay out of git.
@@ -37,12 +37,12 @@ If the toolchain green check hasn't passed on this machine, send the operator to
 5. **Warm-up lap (mandatory).** Invoke `scrape-warmup`: sample 10-50 products, detect render mode / auth / anti-bot / parse-shape, then run the two-agent green-light review (Opus 4.8 `xhigh` reviewer + Sonnet 5 advisor). Act on the verdict:
    - **VERDE** → continue.
    - **AJUSTAR/REFATORAR** → fix the parser/config, then re-run the warm-up.
-   - **PEDIR AJUDA** → pause and ask the operator to do the prep (log in, enable the browser path via IT, set up a proxy), then re-run the warm-up.
+   - **PEDIR AJUDA** → pause and ask the operator to do the prep (capture the login session by running `auth_capture.py` locally, enable the browser path via IT, set up a proxy), then re-run the warm-up.
    Do not continue on anything but green.
 
 6. **Run-plan.** Invoke `scrape-run-plan`: present scope, ETA, cost, and risks (built from the warm-up's evidence). If the authorization requires approval, get the sign-off before running.
 
-7. **Run.** Start the scrape only with a GREEN warm-up verdict and (if required) approval. Local runs `scrape.py` now. For the Actions runtime: `deploy_actions` builds the `gh secret set` commands that push the gate files as repo secrets, and the workflow template (`assets/github-actions/scrape.yml`) is what runs on cron with checkpointing once it's placed in `.github/workflows/`. `scrape.py` re-checks both gates itself, fail-closed — so even a skipped wizard can't run an unauthorized or un-warmed scrape.
+7. **Run.** Start the scrape only with a GREEN warm-up verdict and (if required) approval. Local runs `scrape.py` now. For the Actions runtime: `deploy_actions` builds the `gh secret set` commands that push the gate files as repo secrets — and, for `auth_required` projects, `actions_setup.py` also materializes the conditional `SCRAPE_STORAGE_STATE` secret. The workflow template (`assets/github-actions/scrape.yml`) runs on cron with checkpointing once placed in `.github/workflows/`. `scrape.py` re-checks the gates itself, fail-closed — the compliance gate, the warm-up verdict, and (when `auth_required`) a session preflight that exits 2 on a missing/expired session — so even a skipped wizard can't run an unauthorized, un-warmed, or un-authenticated scrape.
 
 8. **Normalize + export.** Invoke `scrape-normalize-export`: build the canonical dataset → `exports/products.csv` + `exports/wiki/`.
 
@@ -53,9 +53,10 @@ If the toolchain green check hasn't passed on this machine, send the operator to
 - **The warm-up is not skippable.** No full run without a green, unexpired, domain-matching `.scrape-warmup.json` — the runtime enforces this.
 - **The compliance gate is fail-closed** and runs again at runtime; a hard block means stop, not work around.
 - **Talk to the operator in their language**, in plain terms. When a gate blocks or a step needs their action, say exactly what to do next.
-- **Never commit secrets** (`.scrape-authorization.json`, `.scrape-warmup.json`) — they're gitignored and reconstructed from Actions secrets at runtime.
+- **Never commit secrets** (`.scrape-authorization.json`, `.scrape-warmup.json`, `.scrape-session.json`) — they're gitignored and reconstructed from Actions secrets at runtime.
 
 ## References
 
 - `references/execution-strategy.md` — models/efforts per step (never Haiku; Sonnet 5 economical; Opus xhigh for audit/review).
 - `references/runtime-github-actions.md` — the unattended Actions runtime (secrets → gates, cron, checkpoint, artifact).
+- `references/auth-session.md` — the authenticated path (local session capture, the daily token-refresh ritual, fail-closed on expiry, VM-promotion trigger).

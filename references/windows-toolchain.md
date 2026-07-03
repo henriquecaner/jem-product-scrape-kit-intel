@@ -20,7 +20,7 @@ needed, and whether it's required:
 | Git | `Git.Git` | version control + resume checkpoints | yes |
 | GitHub CLI (`gh`) | `GitHub.cli` | `gh secret set` / repo ops (Actions runtime) | yes |
 | Python 3 | `Python.Python.3.12` | runs the scraper engine | yes |
-| Playwright | (none — pip, not winget) | browser render path for SPA/JS sites | no (optional) |
+| Playwright | (none — pip, not winget) | browser render path for SPA/JS sites, and headed session capture for auth-gated sites (`auth_capture.py`) | no (optional) |
 
 `check_tools(*, which)` probes each tool via a `which`-style lookup and
 returns `{ready, present, missing}` — `ready` is true only when every

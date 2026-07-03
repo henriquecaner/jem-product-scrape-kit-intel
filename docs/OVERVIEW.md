@@ -30,15 +30,15 @@ O warm-up existe porque a gente aprendeu na prática. Testando um distribuidor, 
 ## Onde ele roda
 
 - Local, na sua máquina, pra sites públicos e avulsos.
-- No GitHub Actions, agendado, pra runs que precisam rodar sozinhos (com proxy de país quando o site é geo-restrito).
+- No GitHub Actions, agendado, pra runs que precisam rodar sozinhos — com proxy de país quando o site é geo-restrito, e com login quando o site exige conta.
 
 Você não precisa decidir isso sozinho: o assistente escolhe com você no começo do projeto, a partir do que você respondeu.
 
 ## O que está pronto e o que não está
 
-Pronto (v1): scraping de sites públicos (local e Actions), o warm-up, normalização e export, e o onboarding de máquina.
+Pronto: scraping de sites públicos (local e Actions), o warm-up, normalização e export, o onboarding de máquina, e scraping de sites com login com saída por IP do país. Pra sites com conta, você loga uma vez na sua máquina (uma janela de navegador abre), a sessão é reusada nos runs seguintes, e o run para e avisa quando o token expira.
 
-Ainda não, e documentado pra depois: scraping de sites que exigem login (captura de sessão e ciclo de token), normalização assistida por IA, e o plano do run em PDF. Hoje o plano sai em markdown.
+Ainda não, e documentado pra depois: normalização assistida por IA e o plano do run em PDF (hoje o plano sai em markdown). A renovação do token continua sendo uma etapa manual sua (recapturar a sessão de tempos em tempos), e a promoção pra VM em casos de re-login interativo é dirigida pela TI.
 
 ## Próximo passo
 

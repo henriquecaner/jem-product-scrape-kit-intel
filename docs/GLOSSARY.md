@@ -14,7 +14,13 @@ SPA (site renderizado por JavaScript): um site cujo conteúdo só aparece depois
 
 Modo navegador (`fetch_mode: browser`): usa o Playwright pra abrir a página num navegador de verdade e enxergar o conteúdo que só aparece com JavaScript.
 
-Proxy de país: um intermediário que faz a requisição sair de um país específico, pra sites que só mostram conteúdo (ou preço) pra visitantes de certo país.
+Proxy de país: um intermediário que faz a requisição sair de um país específico, pra sites que só mostram conteúdo (ou preço) pra visitantes de certo país. Vale tanto pro fetch simples quanto pro navegador (e pra própria captura de sessão).
+
+Sessão autenticada (`storage_state`): o login capturado uma vez na sua máquina — os cookies e o estado que provam que você está logado. Fica salvo em `.scrape-session.json` (protegido, nunca vai pro Git) e é reusado nos runs seguintes, inclusive nos agendados.
+
+Captura de sessão (`auth_capture.py`): o comando que abre um navegador de verdade na sua máquina pra você logar no site; ao terminar, salva a sessão e mostra o comando pra subir ela como secret do Actions. A captura é sempre local; nada loga sozinho no servidor.
+
+Token expirado: a sessão de login tem prazo (horas, não dias). Quando expira no meio de um run, o motor para na hora e avisa, em vez de coletar a página de login como se fosse produto. O conserto é recapturar a sessão.
 
 Registro canônico: o formato padrão da JEM pra um produto, pra onde todo dado cru é convertido. É versionado, pra não quebrar as ferramentas que consomem depois.
 
@@ -36,7 +42,7 @@ Auditoria: a conferência de cobertura e qualidade depois do run, feita pelo age
 
 Por que o plugin bloqueou meu scraping? Provavelmente o site é concorrente público e o robots.txt proíbe as páginas que você quer. Nesse caso é pra parar; não tem workaround.
 
-Preciso de login no site? Pra sites públicos, não. Scraping de site com login (captura de sessão) ainda não está pronto nesta versão; está documentado pra depois.
+Preciso de login no site? Pra sites públicos, não. Pra sites que exigem conta, sim, e isso é suportado: você loga uma vez na sua máquina (o `auth_capture.py` abre uma janela de navegador), a sessão é salva e reusada nos runs seguintes. Quando o token expira, o motor para e avisa; é só recapturar. O login é sempre feito por você, localmente.
 
 Por que está lento? De propósito. O plugin roda pausado e uma requisição por vez, pra não derrubar nem irritar o site (e não queimar a conta). O tempo é dominado por esse ritmo, não pela velocidade da internet.
 

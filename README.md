@@ -19,6 +19,8 @@ Pra acompanhar um scrape em andamento: `/scrape-status`.
 - **Não scrapeia o que não pode.** Antes de qualquer coisa, ele lê as regras do site (o robots.txt) e registra quem autorizou. Se não pode, ele para e explica. Não tem jeitinho, e é de propósito.
 - **Testa antes de gastar.** Um warm-up com 10 a 50 produtos descobre se o site precisa de navegador, se tem login ou se bloqueia robôs, antes do run de verdade.
 - **Não derruba o site.** O ritmo é devagar de propósito: uma página por vez, com pausas.
+- **Entra em sites com login.** Quando o site exige conta, você loga uma vez na sua máquina e o motor reusa essa sessão nos runs seguintes, inclusive nos agendados. Se o token expira no meio, ele para e avisa em vez de coletar página de login como se fosse produto.
+- **Sai por um IP do país certo.** Pra sites que só respondem de um país, o run sai por um proxy daquele país (o mesmo tanto no fetch simples quanto no navegador).
 - **Se cair, retoma.** O progresso fica salvo. Queda de conexão não faz recomeçar do zero.
 - **Sai pronto pra usar.** Um `products.csv` que abre no Excel sem sustos e uma wiki organizada por categoria.
 - **Pode rodar sozinho.** Pra scrapes agendados, ele roda no GitHub Actions, sem depender do seu computador ficar ligado.
@@ -33,11 +35,11 @@ Pra acompanhar um scrape em andamento: `/scrape-status`.
 
 ## Pra quem é do código
 
-O motor é Python 3 só com a biblioteca padrão (Playwright é dependência opcional, do caminho de navegador) e roda local ou agendado no GitHub Actions. Arquitetura, testes, como adicionar um site e como lançar versão estão no [guia do desenvolvedor](docs/DEVELOPING.md). O design e os planos de implementação estão em [`docs/superpowers/`](docs/superpowers/).
+O motor é Python 3 só com a biblioteca padrão (Playwright é dependência opcional, do caminho de navegador e da captura de sessão autenticada) e roda local ou agendado no GitHub Actions. Arquitetura, testes, como adicionar um site e como lançar versão estão no [guia do desenvolvedor](docs/DEVELOPING.md). O design e os planos de implementação estão em [`docs/superpowers/`](docs/superpowers/).
 
 ```bash
 python3 -m venv .venv && .venv/bin/python -m pip install pytest
-.venv/bin/python -m pytest -q     # motor: 204 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # motor: 263 passando (+1 skip: smoke Playwright)
 ```
 
 Repositório interno JEM Systems. UNLICENSED.

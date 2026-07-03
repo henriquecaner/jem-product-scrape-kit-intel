@@ -95,3 +95,4 @@ The gate is auto-declaration by design — it trusts whoever writes the JSON, ma
 
 - `references/anti-ban-playbook.md` — pacing floor, realistic UA, single-thread, dedicated low-privilege account.
 - `references/geo-proxy.md` — country-egress proxy for geo-restricted targets (and the browser-path caveat).
+- `references/auth-session.md` — for login-gated targets, the compliance gate still runs above the session gate; login on a public-competitor site is a bigger compliance flag.

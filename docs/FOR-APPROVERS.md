@@ -26,6 +26,16 @@ O robots.txt é um arquivo público onde o site diz o que aceita ou não que rob
 
 O caso mais restrito é concorrente público com robots proibindo: aí o plugin para, e não tem workaround. É de propósito.
 
+## Scraping autenticado
+
+Alguns sites só mostram o catálogo, ou o preço real, pra quem está logado. O plugin cobre esse caso, e ele muda a conversa de compliance de um jeito que vale conhecer antes de aprovar.
+
+Num scrape autenticado, o motor não faz um acesso anônimo: ele reusa uma sessão de login capturada na máquina de quem opera. Três pontos pesam na decisão:
+
+- O tipo de relação importa mais aqui. Usar um login num site de concorrente público é um sinal bem mais forte do que scraping público, e pede escrutínio extra. Login costuma fazer sentido em fornecedor contratado ou conta própria, não em concorrente.
+- A sessão é uma credencial de verdade, não um acesso anônimo. O arquivo capturado (`.scrape-session.json`) carrega o login ativo: fica com permissão restrita (0600), fora do Git, e o hook de segurança barra commit acidental. Ele tem prazo próprio (horas), separado da validade da autorização.
+- A captura é local e feita por uma pessoa. Só a máquina de quem opera loga; o servidor nunca loga sozinho. Quando o token expira no meio do run, o motor para e avisa, em vez de seguir cego coletando a página de login.
+
 ## O plano do run (o que você aprova)
 
 Antes do run cheio, o plugin gera um plano com escopo, tempo estimado, custo e riscos, tudo baseado no que o warm-up encontrou no site, não em chute. Pra projetos que exigem aprovação, esse plano é o documento que você revisa e assina.

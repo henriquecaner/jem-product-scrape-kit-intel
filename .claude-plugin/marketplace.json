@@ -5,7 +5,7 @@
     {
       "name": "jem-product-scrape-kit-intel",
       "source": "./",
-      "description": "Compliance-first product scraping for the JEM team: authorization gate, mandatory warm-up lap, normalize, and export to CSV + wiki. Runs locally or on GitHub Actions.",
+      "description": "Compliance-first product scraping for the JEM team: authorization gate, mandatory warm-up lap, normalize, and export to CSV + wiki. Runs locally or on GitHub Actions, with authenticated sessions and country-egress proxy for login-gated or geo-restricted targets.",
       "version": "0.1.0"
     }
   ]

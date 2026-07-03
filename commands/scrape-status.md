@@ -7,4 +7,4 @@ Report the current scraping project's status. This is **read-only** — do not s
 1. Read `state/cursor.json` (the resume checkpoint) and summarize how many URLs are done vs pending.
 2. Read `docs/DAILY.md` if present for the recent run history and the last outcome.
 3. On the **GitHub Actions** runtime, return the latest run's `upload-artifact` download link and the checkpoint commit, so the operator can pull the deliverable.
-4. If a run is paused (authorization expired, warm-up verdict not green or expired, gate blocked), say so and point to the next action.
+4. If a run is paused (authorization expired, warm-up verdict not green or expired, gate blocked, or — for auth targets — the login session missing/expired), say so and point to the next action. For an expired session, the next action is re-running `auth_capture.py` locally and (on Actions) updating the `SCRAPE_STORAGE_STATE` secret.

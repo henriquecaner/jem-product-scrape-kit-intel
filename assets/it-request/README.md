@@ -10,7 +10,7 @@ winget (PowerShell como administrador):
     winget install --id GitHub.cli -e --silent
     winget install --id Python.Python.3.12 -e --silent
 
-Caminho browser (só para sites SPA/JS ou com login):
+Caminho browser e captura de sessão (só para sites SPA/JS ou com login):
 
     pip install playwright
     playwright install chromium
@@ -26,4 +26,4 @@ Chrome normalmente já está presente.
 ## Notas
 
 - O repositório do projeto deve ser **privado** (dado sensível).
-- Os secrets do Actions (`SCRAPE_AUTHORIZATION`, `SCRAPE_WARMUP`, e opcionalmente `HTTPS_PROXY`/`ANTHROPIC_API_KEY`) são setados via `gh secret set` (requer `gh` autenticado).
+- Os secrets do Actions (`SCRAPE_AUTHORIZATION`, `SCRAPE_WARMUP`, e opcionalmente `HTTPS_PROXY`/`ANTHROPIC_API_KEY`/`SCRAPE_STORAGE_STATE` — este último quando `auth_required`) são setados via `gh secret set` (requer `gh` autenticado).
