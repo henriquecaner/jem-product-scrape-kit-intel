@@ -9,6 +9,9 @@ Estado do trabalho para retomar em outro terminal/sessão sem perder contexto.
 
 Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado. 204 testes passando (+1 skip: smoke Playwright).** Único item deferido: **Plano 3b — auth/token** (usuário sem login; ver §5.1). Design em rev7.
 
+## Release (2026-07-03)
+**v0.1.0 publicada:** tag `v0.1.0` + release no GitHub com o zip anexado — https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.1.0. Link estável pra distribuição (repo privado: quem instala precisa de acesso). Pendências restantes: smoke de instalação (A abaixo), um scrape real ponta-a-ponta, smoke em Windows JEM.
+
 ## Pré-distribuição (2026-07-02)
 Preparado pra distribuir amanhã. Feito: **C — handoff scrape→export fiado** (`Manifest.records_for_build` + `scrape.py` grava `data/raw_records.json`, commit `0d2c98e`); **B — distribuição** (`.claude-plugin/marketplace.json` + `scripts/build-plugin-zip.sh` → `dist/*.zip`; SETUP.md com os 2 métodos; commit `7d77f6f`). Docs de usuário: OVERVIEW, SETUP, GETTING-STARTED, GLOSSARY, FOR-APPROVERS, DEVELOPING.
 **Pendente (do usuário, precisa de máquina real):** **A — smoke de instalação**: instalar o plugin num Claude Code de verdade e confirmar que as 6 skills + 3 commands carregam e um `/scrape-setup` roda (o plugin-validator valida estrutura, não runtime). **Caveat:** nenhum scrape rodou ponta-a-ponta de verdade (tudo testado com fakes) — vale um run real numa fixture/site público permitido, que precisa de um `site_adapter` (o wizard cria).
