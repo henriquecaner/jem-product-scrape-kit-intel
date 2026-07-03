@@ -36,6 +36,18 @@ def preflight(config_path, authz_path, now):
     return cfg, auth
 
 
+def flush_outputs(manifest, cache_dir):
+    """Write the manifest + the records file build_dataset consumes. Called on
+    both a clean finish and an AuthExpired abort, so a mid-run token death never
+    discards the records already scraped this invocation."""
+    manifest.write(HERE / "exports" / "scrape_manifest.json")
+    from jemscrape.cache import atomic_write
+    records_path = cache_dir / "raw_records.json"
+    atomic_write(records_path, json.dumps(manifest.records_for_build(cache_dir),
+                                          ensure_ascii=False, indent=2))
+    return records_path
+
+
 def require_warmup(warmup_path, target_url, now):
     """Fail-closed: raises WarmupError unless a green, unexpired, matching verdict exists."""
     verdict = load_warmup_verdict(warmup_path)
@@ -129,13 +141,10 @@ def main(argv=None):
         notify.emit("error", f"session expired mid-run: {exc}; renew with auth_capture.py "
                              f"and update the secret")
         print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
+        flush_outputs(manifest, cache_dir)
         return 2
-    manifest.write(HERE / "exports" / "scrape_manifest.json")
     # Hand off to normalize/export: write the records file build_dataset consumes.
-    from jemscrape.cache import atomic_write
-    records_path = cache_dir / "raw_records.json"
-    atomic_write(records_path, json.dumps(manifest.records_for_build(cache_dir),
-                                          ensure_ascii=False, indent=2))
+    records_path = flush_outputs(manifest, cache_dir)
     print(f"[done] {summary}; records -> {records_path}")
     return 0
 

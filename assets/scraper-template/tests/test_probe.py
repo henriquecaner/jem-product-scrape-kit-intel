@@ -52,3 +52,27 @@ def test_probe_raises_fetcherror_on_network_error():
         raise urllib.error.URLError("connection refused")
     with pytest.raises(FetchError):
         probe("https://x/p", user_agent="UA", urlopen=fake_urlopen)
+
+
+def test_cookie_header_added_to_request():
+    seen = {}
+
+    def fake_urlopen(request, timeout=None):
+        seen["cookie"] = request.get_header("Cookie")
+        return _Resp("<h1>ok</h1>")
+
+    p = probe("https://x/p", user_agent="UA", cookie_header="sid=abc; csrf=xyz",
+             urlopen=fake_urlopen)
+    assert p.status == 200
+    assert seen["cookie"] == "sid=abc; csrf=xyz"
+
+
+def test_no_cookie_header_when_absent():
+    seen = {}
+
+    def fake_urlopen(request, timeout=None):
+        seen["cookie"] = request.get_header("Cookie")
+        return _Resp("<h1>ok</h1>")
+
+    probe("https://x/p", user_agent="UA", urlopen=fake_urlopen)
+    assert seen["cookie"] is None

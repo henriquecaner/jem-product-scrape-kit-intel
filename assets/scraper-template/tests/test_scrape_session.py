@@ -42,3 +42,29 @@ def test_auth_required_valid_session_returned(tmp_path):
     s = scrape.load_run_session({"auth_required": True, "target_domain": "x.com"},
                                 p, datetime.now(timezone.utc))
     assert s.cookie_header("x.com") == "sid=abc"
+
+
+def test_flush_outputs_writes_manifest_and_records(tmp_path, monkeypatch):
+    # Regression for the AuthExpired abort silently dropping already-scraped
+    # records: flush_outputs must write both the manifest and raw_records.json
+    # from whatever the manifest holds at call time, independent of how main()
+    # got there (clean finish or a mid-run AuthExpiredError).
+    monkeypatch.setattr(scrape, "HERE", tmp_path)
+    from jemscrape.manifest import Manifest
+
+    manifest = Manifest()
+    manifest.record_scraped("https://x/1", {"sku": "A1"})
+    cache_dir = tmp_path / "data"
+
+    records_path = scrape.flush_outputs(manifest, cache_dir)
+
+    manifest_path = tmp_path / "exports" / "scrape_manifest.json"
+    assert manifest_path.exists()
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest_data["counts"]["scraped"] == 1
+
+    assert records_path == cache_dir / "raw_records.json"
+    records = json.loads(records_path.read_text(encoding="utf-8"))
+    assert len(records) == 1
+    assert records[0]["url"] == "https://x/1"
+    assert records[0]["raw"] == {"sku": "A1"}
