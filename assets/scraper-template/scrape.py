@@ -15,6 +15,7 @@ HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.json"
 AUTHZ_PATH = HERE / ".scrape-authorization.json"
 WARMUP_PATH = HERE / ".scrape-warmup.json"
+SESSION_PATH = HERE / ".scrape-session.json"
 
 
 def build_pacer(cfg):
@@ -39,6 +40,21 @@ def require_warmup(warmup_path, target_url, now):
     """Fail-closed: raises WarmupError unless a green, unexpired, matching verdict exists."""
     verdict = load_warmup_verdict(warmup_path)
     validate_warmup(verdict, target_url, now)
+
+
+def load_run_session(cfg, session_path, now):
+    """Fail-closed session gate for the auth path. Returns None when auth isn't
+    required; otherwise loads the session and raises SessionError if it's
+    missing or expired (spec §5.1 rules 5)."""
+    if not cfg.get("auth_required"):
+        return None
+    from jemscrape.session import load_session   # stdlib, but keep imports local to the path
+    session = load_session(session_path)
+    if session.is_expired(now):
+        from jemscrape.errors import SessionError
+        raise SessionError("session token expired — renew locally with auth_capture.py "
+                           "and update the SCRAPE_STORAGE_STATE secret")
+    return session
 
 
 def build_fetcher(cfg, *, http_fetch, render_fn=None, session=None):
@@ -80,6 +96,12 @@ def main(argv=None):
         print(f"[gate] BLOCKED: warm-up not green — {exc}", file=sys.stderr)
         return 2
 
+    try:
+        session = load_run_session(cfg, SESSION_PATH, datetime.now(timezone.utc))
+    except Exception as exc:   # fail-closed: no auth run without a valid session
+        print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
+        return 2
+
     # Site adaptation supplies discover() -> list[str] and parse(html, url) -> dict | None.
     from site_adapter import discover, parse  # created per site (not in this plan)
     from jemscrape.cache import Cursor
@@ -96,10 +118,18 @@ def main(argv=None):
     manifest = Manifest()
     pacer = build_pacer(cfg)
 
-    fetcher = build_fetcher(cfg, http_fetch=http_fetch)
+    fetcher = build_fetcher(cfg, http_fetch=http_fetch, session=session)
 
-    summary = run(urls=urls, parse_fn=parse, cache_dir=cache_dir, fetcher=fetcher,
-                  pacer=pacer, cursor=cursor, manifest=manifest, reparse=args.reparse)
+    from jemscrape.errors import AuthExpiredError
+    try:
+        summary = run(urls=urls, parse_fn=parse, cache_dir=cache_dir, fetcher=fetcher,
+                      pacer=pacer, cursor=cursor, manifest=manifest, reparse=args.reparse)
+    except AuthExpiredError as exc:
+        import notify
+        notify.emit("error", f"session expired mid-run: {exc}; renew with auth_capture.py "
+                             f"and update the secret")
+        print(f"[gate] BLOCKED: {exc}", file=sys.stderr)
+        return 2
     manifest.write(HERE / "exports" / "scrape_manifest.json")
     # Hand off to normalize/export: write the records file build_dataset consumes.
     from jemscrape.cache import atomic_write
