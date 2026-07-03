@@ -17,9 +17,10 @@ _INSTALL_HINT = (
 )
 
 
-def render(url, *, timeout=30000, proxy=None, user_agent=None):
+def render(url, *, timeout=30000, proxy=None, user_agent=None, storage_state=None):
     """Render url in headless Chromium; return RenderedResult(status, html, final_url).
-    timeout is in milliseconds. proxy is a Playwright proxy dict or None."""
+    timeout is in milliseconds. proxy is a Playwright proxy dict or None.
+    storage_state is a Playwright storage_state dict (replays a captured session)."""
     if not _AVAILABLE:
         raise RuntimeError(_INSTALL_HINT)
     launch_kwargs = {}
@@ -28,10 +29,16 @@ def render(url, *, timeout=30000, proxy=None, user_agent=None):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True, **launch_kwargs)
         try:
-            # Browser mode now honors the configured user_agent (Plano 3a Fix A):
-            # a context is created only when a UA override is supplied.
+            # Browser mode now honors the configured user_agent (Plano 3a Fix A)
+            # and an optional replayed session (Plano 3b): a context is created
+            # only when a UA override or storage_state is supplied.
+            context_kwargs = {}
             if user_agent is not None:
-                context = browser.new_context(user_agent=user_agent)
+                context_kwargs["user_agent"] = user_agent
+            if storage_state is not None:
+                context_kwargs["storage_state"] = storage_state
+            if context_kwargs:
+                context = browser.new_context(**context_kwargs)
                 page = context.new_page()
             else:
                 page = browser.new_page()

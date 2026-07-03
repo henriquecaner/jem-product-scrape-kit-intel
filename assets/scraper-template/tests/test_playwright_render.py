@@ -22,3 +22,10 @@ def test_render_smoke_renders_inline_html():
         pytest.skip(f"browser render unavailable: {exc}")
     assert isinstance(result, RenderedResult)
     assert "Hello Warmup" in result.html
+
+
+def test_render_accepts_storage_state_kwarg():
+    import inspect
+    from drivers.playwright_render import render
+    sig = inspect.signature(render)
+    assert "storage_state" in sig.parameters

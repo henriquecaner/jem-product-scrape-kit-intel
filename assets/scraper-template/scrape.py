@@ -1,6 +1,7 @@
 """Generated scraper entry point. Runtime compliance gate lives in preflight()."""
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,17 +41,24 @@ def require_warmup(warmup_path, target_url, now):
     validate_warmup(verdict, target_url, now)
 
 
-def build_fetcher(cfg, *, http_fetch, render_fn=None):
+def build_fetcher(cfg, *, http_fetch, render_fn=None, session=None):
     """Select the run fetcher by fetch_mode. Browser mode wraps a render_fn
-    (Playwright) into the runner's fetcher(url)->html contract; default is HTTP."""
+    (Playwright) into the runner's fetcher(url)->html contract; default is HTTP.
+    When session is set, the HTTP path sends its Cookie header and the browser
+    path replays its storage_state; the browser proxy comes from HTTPS_PROXY."""
     if cfg.get("fetch_mode") == "browser":
         from jemscrape.browser import make_browser_fetcher
         if render_fn is None:
             from drivers.playwright_render import render as _render
-            render_fn = lambda url: _render(url, user_agent=cfg["user_agent"])
+            from jemscrape.proxy import proxy_dict_from_url
+            proxy = proxy_dict_from_url(os.environ.get("HTTPS_PROXY"))
+            storage = session.storage_state if session is not None else None
+            render_fn = lambda url: _render(url, user_agent=cfg["user_agent"],
+                                            proxy=proxy, storage_state=storage)
         return make_browser_fetcher(render_fn)
     user_agent = cfg["user_agent"]
-    return lambda url: http_fetch(url, user_agent=user_agent)
+    cookie_header = session.cookie_header(cfg["target_domain"]) if session is not None else None
+    return lambda url: http_fetch(url, user_agent=user_agent, cookie_header=cookie_header)
 
 
 def main(argv=None):
