@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 ### Plano 3b — sessão autenticada + geo no GitHub Actions
 
@@ -16,6 +16,14 @@ Ponte entre a captura de sessão local e um run autenticado, geo-roteado e não 
 - `config.json` valida `auth_required`/`login_url`; `references/auth-session.md` documenta o ritual de refresh e o gatilho de promoção a VM.
 
 **Follow-up conhecido (fora do escopo 3b, pré-existente do Plano 5):** o `raw_records.json` e o `products.csv` são sobrescritos a cada run (manifest só da invocação atual), então um scrape encadeado por chunks/cron acumula só o último chunk. Latente desde o `--limit`+cron; o fluxo auth+cron do 3b torna isso o modo normal. Precisa ser resolvido (merge/append em `build_dataset`) antes de rodar auth contra um catálogo maior que um chunk.
+
+### Endurecimento (deep review)
+
+Varredura de review (4 revisores) sobre o 3b e o motor, com correções TDD (suíte 204 → 263 → 300 passando, +1 skip):
+
+- **Segurança:** `proxy.py` não ecoa mais a URL do proxy num erro (vazava `user:pass` no log do Actions); credenciais percent-decoded; host IPv6 corrigido. `auth_capture.py` grava a sessão com umask 0600 (sem janela legível). `secrets_io.py` ganha `O_NOFOLLOW` + `fchmod` antes do write (fecha symlink e a janela de perms). `precheck.py` fecha bypasses do hook (`git -C/-c add`, remoção de aspas, caixa).
+- **Correção:** `session.is_expired` só considera a sessão morta quando todos os cookies persistentes expiraram (antes um cookie incidental bloqueava um login válido). `authz`/`warmup_gate` aceitam o sufixo `Z` em datas (rejeitavam gate legítimo em Python <3.11). O warm-up avisa quando extrai 0 produtos (evita falso "verde"). `detect_auth` não falso-positiva com form de login no header; `detect_antibot` pega a redação atual do Cloudflare. `scrape.yml` distingue "nada a commitar" de falha real no checkpoint.
+- **Robustez:** guards contra `prices[0]` não-dict, `records` não-lista, config com tipos errados, PATH vazio, slug de cache longo demais; dedup de cookies same-name.
 
 ## 0.1.0
 

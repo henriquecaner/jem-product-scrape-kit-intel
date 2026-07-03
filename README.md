@@ -4,7 +4,7 @@ Plugin do Claude Code que ajuda o time da JEM a trazer catálogos de produtos de
 
 Você conversa com um assistente que pergunta o que precisa, confere se o scraping é permitido, testa o site antes e só então roda. No fim, sai uma planilha pronta pro Excel e uma wiki com uma página por produto.
 
-**Versão atual:** v0.1.0 ([release com o instalador](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.1.0)). Recém-publicada; estamos validando a instalação nas primeiras máquinas.
+**Versão atual:** v0.2.0 ([release com o instalador](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.2.0)). Adiciona scraping autenticado + saída por IP do país, sobre a fundação da v0.1.0.
 
 ## Como começar
 

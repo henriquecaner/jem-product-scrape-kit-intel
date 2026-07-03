@@ -7,7 +7,7 @@ Estado do trabalho para retomar em outro terminal/sessão sem perder contexto.
 
 ## Onde estamos
 
-Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado.** **Plano 3b (auth/token + geo) construído em 2026-07-03** (ver abaixo) — não há mais itens deferidos do roadmap original. 263 testes passando (+1 skip: smoke Playwright). Design em rev7.
+Plugin do Claude Code para scraping de catálogos JEM. **PROJETO v1 COMPLETO — Planos 1, 2, 4, 3a, 5, 6 e 7 na `main`, pushados. Plugin instalável + documentado.** **Plano 3b (auth/token + geo) construído em 2026-07-03** (ver abaixo) — não há mais itens deferidos do roadmap original. **Release v0.2.0 (2026-07-03)** empacota o 3b + um deep review (4 revisores, correções TDD de segurança/correção/robustez; docs atualizadas em toda a superfície). 300 testes passando (+1 skip: smoke Playwright). Design em rev7.
 
 ## Plano 3b — sessão autenticada + geo no Actions (2026-07-03) ✅
 
