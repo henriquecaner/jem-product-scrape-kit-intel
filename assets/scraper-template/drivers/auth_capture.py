@@ -2,6 +2,7 @@
 user logs in manually (with the country proxy on launch when geo applies), then
 saves context.storage_state to a file. Playwright-only, guarded — kept out of
 the stdlib core and the stdlib test suite, like playwright_render.py."""
+import os
 from pathlib import Path
 
 try:
@@ -38,7 +39,14 @@ def capture_session(login_url, out_path, *, proxy=None, user_agent=None, wait_fn
             page = context.new_page()
             page.goto(login_url)
             wait_fn()
-            context.storage_state(path=str(out_path))
+            # Live auth cookies land on disk here -- create the file 0600 from
+            # the first byte so there's no readable window before the root
+            # CLI's belt-and-suspenders os.chmod runs.
+            old_umask = os.umask(0o077)
+            try:
+                context.storage_state(path=str(out_path))
+            finally:
+                os.umask(old_umask)
         finally:
             browser.close()
     return out_path

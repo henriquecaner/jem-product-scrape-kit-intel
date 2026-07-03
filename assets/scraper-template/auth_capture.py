@@ -36,8 +36,8 @@ def main(argv=None):
     from drivers.auth_capture import capture_session   # lazy: Playwright only here
     try:
         out = capture_session(login_url, args.out, proxy=proxy, user_agent=cfg["user_agent"])
-    except RuntimeError as exc:  # Playwright missing -> actionable hint
-        print(f"[auth-capture] {exc}", file=sys.stderr)
+    except Exception as exc:  # Playwright missing, timeout, user closed browser, ...
+        print(f"[auth-capture] BLOCKED: {exc}", file=sys.stderr)
         return 2
 
     # Live auth cookies -> restrict perms immediately (spec §4.6, §9; mirrors

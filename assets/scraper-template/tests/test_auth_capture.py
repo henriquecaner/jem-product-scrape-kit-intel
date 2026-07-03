@@ -75,3 +75,28 @@ def test_cli_writes_session_with_0600_perms(tmp_path, capsys, monkeypatch):
     rc = auth_capture.main(["--config", str(cfg), "--out", str(out_path)])
     assert rc == 0
     assert oct(out_path.stat().st_mode & 0o777) == "0o600"
+
+
+def test_cli_handles_generic_exception_from_capture_session(tmp_path, capsys, monkeypatch):
+    # A Playwright timeout / user-closed-browser is not a RuntimeError; main()
+    # must still catch it and return an actionable BLOCKED message, not a
+    # traceback.
+    import json
+    import drivers.auth_capture as driver_module
+
+    def fake_capture_session(login_url, out, *, proxy=None, user_agent=None, wait_fn=None):
+        raise Exception("boom")
+
+    monkeypatch.setattr(driver_module, "capture_session", fake_capture_session)
+    monkeypatch.delenv("HTTPS_PROXY", raising=False)
+
+    import auth_capture
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"target_domain": "x.com", "runtime": "local",
+                               "user_agent": "UA", "rate_limit_floor_seconds": 2.5,
+                               "auth_required": True, "login_url": "https://x.com/login"}),
+                   encoding="utf-8")
+
+    rc = auth_capture.main(["--config", str(cfg), "--out", str(tmp_path / "s.json")])
+    assert rc == 2
+    assert "boom" in capsys.readouterr().err

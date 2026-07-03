@@ -105,6 +105,36 @@ def test_is_expired_false_when_no_expiry(tmp_path):
     assert s.is_expired(datetime.now(timezone.utc)) is False
 
 
+def test_is_expired_false_when_one_persistent_cookie_still_future(tmp_path):
+    # sid expired in the past, but a second persistent cookie (auth) is still
+    # valid for weeks -> the session must NOT be considered dead.
+    obj = {
+        "cookies": [
+            {"name": "consent", "value": "x", "domain": "shop.example.com",
+             "path": "/", "expires": PAST},
+            {"name": "auth", "value": "y", "domain": "shop.example.com",
+             "path": "/", "expires": FUTURE},
+        ],
+        "origins": [],
+    }
+    s = sess.load_session(_write(tmp_path, obj))
+    assert s.is_expired(datetime.now(timezone.utc)) is False
+
+
+def test_is_expired_true_when_all_persistent_cookies_expired(tmp_path):
+    obj = {
+        "cookies": [
+            {"name": "consent", "value": "x", "domain": "shop.example.com",
+             "path": "/", "expires": PAST},
+            {"name": "auth", "value": "y", "domain": "shop.example.com",
+             "path": "/", "expires": PAST + 1},
+        ],
+        "origins": [],
+    }
+    s = sess.load_session(_write(tmp_path, obj))
+    assert s.is_expired(datetime.now(timezone.utc)) is True
+
+
 def test_bare_domain_cookie_does_not_match_subdomain(tmp_path):
     # A host-only cookie for shop.example.com must NOT be sent to a narrower/other host.
     obj = {"cookies": [{"name": "sid", "value": "abc", "domain": "example.com",
@@ -120,6 +150,20 @@ def test_dot_domain_cookie_matches_subdomain(tmp_path):
     s = sess.load_session(_write(tmp_path, obj))
     assert s.cookie_header("shop.example.com") == "csrf=xyz"  # dot domain -> subdomain
     assert s.cookie_header("example.com") == "csrf=xyz"       # and the apex
+
+
+def test_cookie_header_dedups_same_name_keeps_longest_path(tmp_path):
+    obj = {
+        "cookies": [
+            {"name": "sessionid", "value": "A", "domain": "shop.example.com",
+             "path": "/", "expires": FUTURE},
+            {"name": "sessionid", "value": "B", "domain": "shop.example.com",
+             "path": "/account", "expires": FUTURE},
+        ],
+        "origins": [],
+    }
+    s = sess.load_session(_write(tmp_path, obj))
+    assert s.cookie_header("shop.example.com") == "sessionid=B"
 
 
 def test_cookie_header_accepts_injected_clock(tmp_path):
