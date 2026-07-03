@@ -57,6 +57,19 @@ def test_to_row_blank_when_no_price_or_image():
     assert row["image_url"] == ""
 
 
+def test_to_row_non_dict_first_price_does_not_crash():
+    # In the default (empty band_priority) path, pick_price never runs, so
+    # an adapter returning a bare scalar (e.g. "10.00" or None) as the first
+    # price element must not crash the whole export with an AttributeError.
+    row = _rec(prices=["10.00"]).to_row()
+    assert row["best_price"] == ""
+    assert row["price_band"] == ""
+    assert row["price_source"] == ""
+
+    row2 = _rec(prices=[None]).to_row()
+    assert row2["best_price"] == ""
+
+
 def test_to_dict_is_json_serializable():
     import json
     json.dumps(_rec().to_dict())  # no raise

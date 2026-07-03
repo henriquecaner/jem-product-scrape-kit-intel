@@ -25,7 +25,7 @@ class WarmupReport:
         return asdict(self)
 
 
-def build_checklist(*, spa_count, auth_count, antibot_count, parse_errors, shape):
+def build_checklist(*, spa_count, auth_count, antibot_count, parse_errors, shape, fetched=0):
     items = []
     if spa_count:
         items.append("Site renderiza via JS (SPA): habilite o navegador/Playwright (Plano 3) — "
@@ -40,6 +40,13 @@ def build_checklist(*, spa_count, auth_count, antibot_count, parse_errors, shape
     cov = shape.get("coverage", {})
     if cov and cov.get("price", 1) < 0.5:
         items.append("Cobertura de preço < 50%: confirme se o preço exige login ou ajuste o parser.")
+    # A sample that fetched pages but extracted zero products is the exact
+    # false-green the warm-up exists to catch (wrong selector, undetected
+    # wall, adapter mismatch) -- it must never be reported as all-clear.
+    if fetched > 0 and shape.get("count", 0) == 0:
+        items.append(
+            f"0 produtos extraídos de {fetched} página(s) — parser não casou nenhum item "
+            "(seletor errado ou muro não detectado); NÃO liberar sem investigar.")
     if not items:
         items.append("Nenhum bloqueio detectado no HTTP puro — pronto para o review de sinal verde.")
     return items
@@ -91,7 +98,7 @@ def run_warmup(sample_urls, *, probe_fn, parse_fn, source_site,
     shape = analyze_shape(records)
     checklist = build_checklist(spa_count=spa_count, auth_count=auth_count,
                                 antibot_count=antibot_count, parse_errors=parse_errors,
-                                shape=shape)
+                                shape=shape, fetched=fetched)
     return WarmupReport(
         source_site=source_site, sampled=len(sample_urls), fetched=fetched,
         spa_count=spa_count, auth_count=auth_count, antibot_count=antibot_count,

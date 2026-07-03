@@ -41,7 +41,12 @@ class CanonicalRecord:
         return asdict(self)
 
     def to_row(self):
-        price = self.prices[0] if self.prices else {}
+        # In the default (empty band_priority) path, pick_price never runs,
+        # so prices[0] can be whatever the site adapter returned raw (e.g. a
+        # bare string) instead of the expected {"value": ..., "band": ...}
+        # dict. Guard so a malformed adapter doesn't crash the whole export.
+        first = self.prices[0] if self.prices else {}
+        price = first if isinstance(first, dict) else {}
         return {
             "schema_version": self.schema_version,
             "product_id": self.product_id,

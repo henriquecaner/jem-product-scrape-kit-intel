@@ -17,6 +17,18 @@ def test_slug_is_filesystem_safe():
     assert slug
 
 
+def test_slug_readable_portion_is_length_capped():
+    # A pathologically long final path segment must not produce an
+    # over-long filename (OS limits are ~255 bytes); the sha keeps it
+    # unique regardless of how much of the tail is kept.
+    long_tail = "a" * 500
+    url = f"https://example.com/products/{long_tail}"
+    slug = slug_for(url)
+    assert len(slug) < 120
+    # still deterministic
+    assert slug_for(url) == slug
+
+
 def test_slug_distinct_for_shared_tail(tmp_path):
     url_a = "https://ex.com/A/widget-1"
     url_b = "https://ex.com/B/widget-1"

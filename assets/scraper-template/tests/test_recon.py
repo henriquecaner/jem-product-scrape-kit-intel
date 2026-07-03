@@ -73,6 +73,28 @@ def test_run_warmup_records_parse_error_without_aborting():
     assert "parse_error" in bad_entry
 
 
+def test_run_warmup_zero_products_extracted_is_not_falsely_green():
+    # parse_fn returns None for every sampled server-rendered, non-auth,
+    # non-blocked page -> records=[], shape has 0 products. The checklist
+    # must NOT emit only the all-clear message ("Nenhum bloqueio
+    # detectado ... pronto para o review de sinal verde") -- that is the
+    # exact false-green scenario the warm-up exists to prevent.
+    def parse_fn(body, url):
+        return None
+
+    mapping = {
+        "https://x/a": Probe(status=200, headers={}, body=SERVER_BODY, final_url="https://x/a"),
+        "https://x/b": Probe(status=200, headers={}, body=SERVER_BODY, final_url="https://x/b"),
+    }
+    report = run_warmup(
+        list(mapping.keys()), probe_fn=_fake_probe(mapping), parse_fn=parse_fn,
+        source_site="x", scraped_at="t", authorization_ref="a")
+    assert report.fetched == 2
+    assert report.shape["count"] == 0
+    assert any("0 produtos extraídos" in c for c in report.checklist)
+    assert not any("pronto para o review de sinal verde" in c for c in report.checklist)
+
+
 def test_checklist_antibot_mitigation_matches_v1_runtimes():
     # v1 has no VM runtime path (session/VM promotion is Plano 3b, deferred).
     # The operator-facing mitigation must point at what exists: country proxy

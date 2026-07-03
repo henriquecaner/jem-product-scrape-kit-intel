@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+import jemscrape.authz as authz_mod
 from jemscrape.authz import Authorization, load_authorization, validate
 from jemscrape.errors import AuthorizationError
 
@@ -117,3 +118,35 @@ def test_load_non_object_json_raises_authorization_error(tmp_path):
     p.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
     with pytest.raises(AuthorizationError):
         load_authorization(p)
+
+
+def test_unhashable_authorization_type_raises_domain_error():
+    # A JSON list value for authorization_type must not leak a raw
+    # TypeError ("unhashable type") out of `not in VALID_TYPES` -- it must
+    # fail closed with the domain error like any other invalid value.
+    with pytest.raises(AuthorizationError):
+        validate(_auth(authorization_type=["x"]), "https://example.com/", NOW)
+
+
+def test_expires_at_with_z_suffix_accepted():
+    # Python 3.11+ already accepts a trailing "Z" in fromisoformat, which
+    # would mask a regression on the 3.9/3.10 floor this template targets.
+    # This is a straightforward regression check on top of the mechanism
+    # test below.
+    validate(_auth(expires_at="2026-07-08T09:00:00Z"), "https://example.com/", NOW)
+
+
+def test_expires_at_with_z_suffix_accepted_on_pre_311_fromisoformat(monkeypatch):
+    # Simulate Python <3.11, where datetime.fromisoformat rejects a trailing
+    # "Z" -- the CI matrix runs 3.14 (which accepts it natively), so without
+    # this simulation the bug never shows up locally. _parse_dt must
+    # normalize "Z" to "+00:00" itself before calling fromisoformat.
+    class NoNativeZSupport:
+        @staticmethod
+        def fromisoformat(value):
+            if isinstance(value, str) and value.endswith("Z"):
+                raise ValueError("simulated pre-3.11: no Z support")
+            return datetime.fromisoformat(value)
+
+    monkeypatch.setattr(authz_mod, "datetime", NoNativeZSupport)
+    validate(_auth(expires_at="2026-07-08T09:00:00Z"), "https://example.com/", NOW)

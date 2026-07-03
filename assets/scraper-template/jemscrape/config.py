@@ -67,5 +67,17 @@ def validate_config(cfg):
         if not isinstance(login_url, str) or not login_url.strip():
             errors.append("login_url: required non-empty string when auth_required is true")
 
+    band_priority = cfg.get("band_priority")
+    if band_priority is not None and not isinstance(band_priority, list):
+        errors.append("band_priority: must be a list if set")
+
+    hub_group = cfg.get("hub_group")
+    if hub_group is not None and not isinstance(hub_group, list):
+        errors.append("hub_group: must be a list if set")
+
+    ireland_branch = cfg.get("ireland_branch")
+    if ireland_branch is not None and not isinstance(ireland_branch, str):
+        errors.append("ireland_branch: must be a string if set")
+
     if errors:
         raise ConfigError("invalid config: " + "; ".join(errors))

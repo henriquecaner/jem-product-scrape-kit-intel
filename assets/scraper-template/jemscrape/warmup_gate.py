@@ -37,6 +37,10 @@ def load_warmup_verdict(path):
 
 
 def _parse_dt(value):
+    # datetime.fromisoformat only accepts the trailing "Z" UTC suffix on
+    # Python 3.11+; the template targets 3.9+, so normalize it ourselves.
+    if isinstance(value, str) and value.endswith("Z"):
+        value = value[:-1] + "+00:00"
     try:
         return datetime.fromisoformat(value)
     except (TypeError, ValueError) as exc:
@@ -44,7 +48,7 @@ def _parse_dt(value):
 
 
 def validate_warmup(verdict, target_url, now):
-    if verdict.verdict not in VALID_VERDICTS:
+    if not isinstance(verdict.verdict, str) or verdict.verdict not in VALID_VERDICTS:
         raise WarmupError(f"verdict invalid: {verdict.verdict!r}")
     if verdict.verdict != "green":
         raise WarmupError(f"warm-up verdict is {verdict.verdict!r}, not green — full run blocked")

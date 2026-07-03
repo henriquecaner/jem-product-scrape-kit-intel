@@ -26,6 +26,16 @@ def test_render_markdown_has_name_and_link():
     assert "PLE-J015" in md
 
 
+def test_render_markdown_non_dict_first_price_does_not_crash():
+    # In the default (empty band_priority) path, pick_price never runs, so
+    # an adapter returning a bare scalar as the first price element must
+    # not crash the wiki export with an AttributeError.
+    rec = _rec("A1", "Widget", ["Fire"])
+    rec.prices = ["10.00"]
+    md = render_markdown(rec)
+    assert "# Widget" in md
+
+
 def test_write_wiki_creates_files_under_breadcrumbs_and_index(tmp_path):
     wiki = tmp_path / "wiki"
     n = write_wiki([_rec("A1", "Widget", ["Fire", "Detectors"]),
@@ -38,6 +48,16 @@ def test_write_wiki_creates_files_under_breadcrumbs_and_index(tmp_path):
     assert any(p.match("Fire/Detectors/*.md") for p in md_files)
     index = (wiki / "INDEX.md").read_text(encoding="utf-8")
     assert "Widget" in index and "Gadget" in index
+
+
+def test_write_wiki_index_escapes_brackets_in_link_text(tmp_path):
+    # A record name containing "]" must not break the "[text](url)" INDEX
+    # link -- only the displayed text is escaped, not the path/containment
+    # logic.
+    wiki = tmp_path / "wiki"
+    write_wiki([_rec("A1", "Widget [Gen2]", ["Fire"])], wiki)
+    index = (wiki / "INDEX.md").read_text(encoding="utf-8")
+    assert "- [Widget \\[Gen2\\]](" in index
 
 
 def test_write_wiki_disambiguates_path_collision(tmp_path):

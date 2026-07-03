@@ -45,6 +45,10 @@ def load_authorization(path):
 
 
 def _parse_dt(value, field):
+    # datetime.fromisoformat only accepts the trailing "Z" UTC suffix on
+    # Python 3.11+; the template targets 3.9+, so normalize it ourselves.
+    if isinstance(value, str) and value.endswith("Z"):
+        value = value[:-1] + "+00:00"
     try:
         return datetime.fromisoformat(value)
     except (TypeError, ValueError) as exc:
@@ -52,7 +56,7 @@ def _parse_dt(value, field):
 
 
 def validate(auth, target_url, now):
-    if auth.authorization_type not in VALID_TYPES:
+    if not isinstance(auth.authorization_type, str) or auth.authorization_type not in VALID_TYPES:
         raise AuthorizationError(f"authorization_type invalid: {auth.authorization_type!r}")
     if auth.robots_status not in VALID_ROBOTS:
         raise AuthorizationError(f"robots_status invalid: {auth.robots_status!r}")

@@ -104,3 +104,32 @@ def test_auth_required_true_with_login_url_ok():
 
 def test_auth_required_absent_is_fine():
     validate_config(_base())  # unchanged public path
+
+
+def test_band_priority_wrong_type_rejected():
+    cfg = _base()
+    cfg["band_priority"] = "PLE-J015"   # must be a list, not a bare string
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_hub_group_wrong_type_rejected():
+    cfg = _base()
+    cfg["hub_group"] = "hub"   # must be a list
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_ireland_branch_wrong_type_rejected():
+    cfg = _base()
+    cfg["ireland_branch"] = ["ie"]   # must be a str
+    with pytest.raises(ConfigError):
+        validate_config(cfg)
+
+
+def test_band_priority_hub_group_ireland_branch_valid_types_ok():
+    cfg = _base()
+    cfg["band_priority"] = ["PLE-J015", "universal"]
+    cfg["hub_group"] = ["hub", "hub-mirror"]
+    cfg["ireland_branch"] = "ie"
+    validate_config(cfg)  # must not raise

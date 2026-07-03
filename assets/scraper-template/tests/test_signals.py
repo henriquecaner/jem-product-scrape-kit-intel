@@ -58,7 +58,9 @@ _LOGIN_BODY_MARKERS = (
     "please sign in",
     "login required",
     "member price",
-    'type="password"',
+    "sign in to continue",
+    "please log in",
+    "faça login",
 )
 
 
@@ -73,6 +75,26 @@ def test_detect_auth_flags_every_login_body_marker():
 def test_detect_auth_clean_product_page():
     out = detect_auth(_probe(body="<h1>Widget</h1><span>$19.99</span>"))
     assert out["auth_required"] is False
+
+
+def test_detect_auth_header_login_form_on_public_product_page_not_flagged():
+    # Many ecommerce sites ship a login form (password input) in the global
+    # header/footer of EVERY page. A lone `type="password"` must not, by
+    # itself, flag a fully public product page as auth_required.
+    body = (
+        '<header><form><input type="password" name="pw"></form></header>'
+        "<h1>Widget</h1><span>$19.99</span>"
+    )
+    out = detect_auth(_probe(final_url="https://x/product/1", body=body))
+    assert out["auth_required"] is False
+
+
+def test_detect_auth_real_login_page_still_flagged():
+    out = detect_auth(_probe(final_url="https://x/login", body=""))
+    assert out["auth_required"] is True
+
+    out2 = detect_auth(_probe(body="<div>Please sign in to continue</div>"))
+    assert out2["auth_required"] is True
 
 
 def test_detect_antibot_429_rate():
@@ -113,11 +135,14 @@ def test_detect_antibot_cf_mitigated_header_is_blocked():
     assert out["blocked"] is True and out["kind"] == "cloudflare"
 
 
-def test_detect_antibot_cf_challenge_body_ignored_on_200():
-    # A real Cloudflare challenge is never a plain 200 with content; a 200 that
-    # merely contains the phrase must not be flagged as blocked.
+def test_detect_antibot_benign_loading_copy_at_200_not_blocked():
+    # A generic, non-Cloudflare loading message on a normal 200 page must
+    # not be flagged as blocked. (Note: "Just a moment..." itself is now a
+    # trusted marker -- see test_detect_antibot_current_cf_interstitial_wording_is_blocked
+    # -- because the current Cloudflare interstitial serves exactly that
+    # wording at HTTP 200 when rendered by a browser.)
     out = detect_antibot(Probe(status=200, headers={},
-                               body="Just a moment while we set things up.",
+                               body="Please wait while we load your cart.",
                                final_url="https://x/p"))
     assert out["blocked"] is False
 
@@ -131,6 +156,25 @@ def test_detect_antibot_rendered_cf_challenge_at_200_is_blocked():
     # every JS-challenge block.
     out = detect_antibot(Probe(status=200, headers={},
                                body="Checking your browser before accessing. cf-browser-verification",
+                               final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "cloudflare"
+
+
+def test_detect_antibot_current_cf_interstitial_wording_is_blocked():
+    # The current Cloudflare interstitial says "Just a moment…" / "Verifying
+    # you are human." -- the old markers ("checking your browser before
+    # accessing", "cf-chl") don't substring-match this wording at all.
+    out = detect_antibot(Probe(status=200, headers={},
+                               body="Just a moment... Verifying you are human.",
+                               final_url="https://x/p"))
+    assert out["blocked"] is True and out["kind"] == "cloudflare"
+
+
+def test_detect_antibot_cf_chl_js_token_is_blocked():
+    # The challenge JS token is "_cf_chl_opt" (underscore-prefixed); the old
+    # "cf-chl" marker does not substring-match it.
+    out = detect_antibot(Probe(status=200, headers={},
+                               body="<script>window._cf_chl_opt = {};</script>",
                                final_url="https://x/p"))
     assert out["blocked"] is True and out["kind"] == "cloudflare"
 

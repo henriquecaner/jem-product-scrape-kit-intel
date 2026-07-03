@@ -80,6 +80,13 @@ def main(argv=None):
         print(f"records file not found or invalid: {exc}.", file=sys.stderr)
         return 2
 
+    if not isinstance(raws, list):
+        print(
+            f"records file at {args.records} must be a JSON list of records.",
+            file=sys.stderr,
+        )
+        return 2
+
     summary = build(
         raws,
         source_site=source_site,

@@ -14,6 +14,12 @@ def safe_name(name, fallback="index"):
     return cleaned
 
 
+def _escape_link_text(text):
+    # Minimal markdown escaping for the INDEX link TEXT only -- a "]" in the
+    # record name would otherwise prematurely close the "[text](url)" link.
+    return text.replace("[", "\\[").replace("]", "\\]")
+
+
 def render_markdown(record):
     lines = [f"# {record.name}", ""]
     meta = []
@@ -30,7 +36,11 @@ def render_markdown(record):
     if record.description_clean:
         lines += ["## Description", record.description_clean, ""]
     if record.prices:
-        p = record.prices[0]
+        # In the default (empty band_priority) path, pick_price never runs,
+        # so prices[0] can be a bare scalar instead of the expected
+        # {"value": ..., "band": ...} dict. Guard against that shape.
+        first = record.prices[0]
+        p = first if isinstance(first, dict) else {}
         band = f" _(band {p.get('band')})_" if p.get("band") else ""
         lines += ["## Pricing", f"- {p.get('value')} {p.get('currency', '')}{band}".rstrip(), ""]
     lines += [f"[Source]({record.source_url})", ""]
@@ -61,7 +71,7 @@ def write_wiki(records, wiki_dir):
         if wiki_root not in dest.resolve().parents:
             raise ValueError(f"refusing to write outside wiki_dir: {rel}")
         atomic_write(dest, render_markdown(rec))
-        index.append(f"- [{rec.name}]({rel.as_posix()})")
+        index.append(f"- [{_escape_link_text(rec.name)}]({rel.as_posix()})")
         count += 1
     atomic_write(wiki_dir / "INDEX.md", "\n".join(index) + "\n")
     return count

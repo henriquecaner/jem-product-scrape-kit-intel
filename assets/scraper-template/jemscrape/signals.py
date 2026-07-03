@@ -33,9 +33,15 @@ def detect_render(body):
 
 
 _LOGIN_PATH = re.compile(r"/(login|signin|sign-in|account|myaccount|auth)(/|$|\?)", re.I)
+# NOTE: a lone `type="password"` is deliberately NOT a marker here. Many
+# ecommerce sites ship a login form (password input) in the global
+# header/footer of every page, so treating it as a signal on its own would
+# flag every public product page as auth_required. Real auth/paywall
+# detection requires a login-shaped URL or a genuine login/paywall phrase.
 _LOGIN_BODY = (
     "sign in to see price", "log in to view", "please sign in",
-    "login required", "member price", 'type="password"',
+    "login required", "member price", "sign in to continue",
+    "please log in", "faça login",
 )
 
 
@@ -56,8 +62,11 @@ _CF_BODY = (
     "checking your browser before accessing",
     "cf-browser-verification",
     "cf-chl",
+    "_cf_chl",
     "enable javascript and cookies to continue",
     "verify you are human",
+    "verifying you are human",
+    "just a moment",
 )
 _GEO_BODY = (
     "not available in your country", "not available in your region",

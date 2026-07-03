@@ -105,6 +105,24 @@ def test_main_missing_target_domain_returns_2_no_traceback(tmp_path, capsys):
     assert "target_domain" in captured.err.lower()
 
 
+def test_main_records_file_not_a_list_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text(json.dumps({"not": "a list"}), encoding="utf-8")
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "records" in captured.err.lower()
+
+
 def test_main_missing_records_file_returns_2_no_traceback(tmp_path, capsys):
     cfg_path = tmp_path / "config.json"
     cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")

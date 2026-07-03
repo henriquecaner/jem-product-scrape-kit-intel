@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
+_READABLE_MAX = 80
 
 
 def atomic_write(path, text):
@@ -23,6 +24,10 @@ def slug_for(url):
     tail = url.rstrip("/").rsplit("/", 1)[-1] or url
     tail = tail.split("?", 1)[0].split("#", 1)[0]
     readable = _SAFE.sub("-", tail).strip("-") or "index"
+    # Cap the human-readable portion so a pathologically long path segment
+    # doesn't blow past OS filename limits (~255 bytes) -- the sha below
+    # keeps the result unique regardless of how much of the tail survives.
+    readable = readable[:_READABLE_MAX].strip("-") or "index"
     digest = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
     return f"{readable}-{digest}"
 
