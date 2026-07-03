@@ -3,7 +3,7 @@ import urllib.error
 import pytest
 
 from jemscrape.fetch import fetch
-from jemscrape.errors import FetchError
+from jemscrape.errors import FetchError, AuthExpiredError
 
 
 class FakeResp:
@@ -75,3 +75,52 @@ def test_sets_user_agent_header():
 
     fetch("https://x/1", user_agent="MyUA/9", urlopen=urlopen, backoff_sleep=lambda s: None)
     assert seen["ua"] == "MyUA/9"
+
+
+class _Resp:
+    def __init__(self, body):
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def close(self):
+        pass
+
+
+def test_cookie_header_added_to_request():
+    seen = {}
+
+    def fake_urlopen(request, timeout=None):
+        seen["cookie"] = request.get_header("Cookie")
+        return _Resp(b"<h1>ok</h1>")
+
+    html = fetch("https://x/p", user_agent="UA", cookie_header="sid=abc; csrf=xyz",
+                 urlopen=fake_urlopen)
+    assert html == "<h1>ok</h1>"
+    assert seen["cookie"] == "sid=abc; csrf=xyz"
+
+
+def test_no_cookie_header_when_absent():
+    seen = {}
+
+    def fake_urlopen(request, timeout=None):
+        seen["cookie"] = request.get_header("Cookie")
+        return _Resp(b"<h1>ok</h1>")
+
+    fetch("https://x/p", user_agent="UA", urlopen=fake_urlopen)
+    assert seen["cookie"] is None
+
+
+@pytest.mark.parametrize("code", [401, 403])
+def test_401_403_raise_auth_expired_without_retry(code):
+    calls = {"n": 0}
+
+    def fake_urlopen(request, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.HTTPError("https://x/p", code, "denied", {}, None)
+
+    with pytest.raises(AuthExpiredError):
+        fetch("https://x/p", user_agent="UA", urlopen=fake_urlopen,
+              backoff_sleep=lambda s: None)
+    assert calls["n"] == 1  # no retry
