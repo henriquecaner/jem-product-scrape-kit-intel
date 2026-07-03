@@ -6,6 +6,7 @@ from pathlib import Path
 _SECRET_MAP = (
     ("SCRAPE_AUTHORIZATION", ".scrape-authorization.json"),
     ("SCRAPE_WARMUP", ".scrape-warmup.json"),
+    ("SCRAPE_STORAGE_STATE", ".scrape-session.json"),
 )
 
 
