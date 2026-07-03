@@ -42,3 +42,8 @@ def test_workflow_push_failure_fails_the_step():
     push_i = WF_TEXT.index("git push ||")
     tail = WF_TEXT[push_i:push_i + 200]
     assert "notify.py" in tail and "exit 1" in tail
+
+
+def test_workflow_materializes_session_secret():
+    assert "SCRAPE_STORAGE_STATE" in WF_TEXT
+    assert "secrets.SCRAPE_STORAGE_STATE" in WF_TEXT

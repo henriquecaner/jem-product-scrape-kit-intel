@@ -26,11 +26,13 @@ jobs:
         env:
           SCRAPE_AUTHORIZATION: ${{ secrets.SCRAPE_AUTHORIZATION }}
           SCRAPE_WARMUP: ${{ secrets.SCRAPE_WARMUP }}
+          SCRAPE_STORAGE_STATE: ${{ secrets.SCRAPE_STORAGE_STATE }}
         run: python actions_setup.py
 
       - name: Compliance gate
         run: python smoke_test.py
 
+      # HTTPS_PROXY reaches the browser path here; it's applied on the Playwright launch (drivers/playwright_render.py).
       - name: Scrape (resumable chunk)
         env:
           HTTPS_PROXY: ${{ secrets.HTTPS_PROXY }}
