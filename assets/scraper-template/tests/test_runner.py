@@ -1,7 +1,10 @@
+import pytest
+
 from jemscrape.runner import run
 from jemscrape.pacing import Pacer
 from jemscrape.cache import Cursor, is_cached
 from jemscrape.manifest import Manifest
+from jemscrape.errors import AuthExpiredError, FetchError
 
 
 def _pacer():
@@ -119,3 +122,35 @@ def test_fetch_error_recorded_and_continues(tmp_path):
                   cache_dir=tmp_path / "data", fetcher=fetcher, pacer=_pacer(),
                   cursor=Cursor(tmp_path / "state" / "cursor.json").load(), manifest=m)
     assert summary == {"scraped": 1, "skipped": 0, "errors": 1}
+
+
+def test_auth_expired_propagates_and_persists_cursor(tmp_path):
+    cur = Cursor(tmp_path / "state" / "cursor.json").load()
+
+    def fetcher(url):
+        raise AuthExpiredError("token dead")
+
+    with pytest.raises(AuthExpiredError):
+        run(urls=["https://x/1"], parse_fn=_parse, cache_dir=tmp_path / "data",
+            fetcher=fetcher, pacer=_pacer(), cursor=cur, manifest=Manifest())
+    # x/1 was NOT marked done — it must be retried after the session is renewed
+    assert not cur.done("https://x/1")
+
+
+def test_fetch_error_still_recorded_and_continues(tmp_path):
+    cur = Cursor(tmp_path / "state" / "cursor.json").load()
+    seen = []
+
+    def fetcher(url):
+        seen.append(url)
+        if url.endswith("/1"):
+            raise FetchError("boom")
+        return "product page"
+
+    m = Manifest()
+    summary = run(urls=["https://x/1", "https://x/2"], parse_fn=_parse,
+                  cache_dir=tmp_path / "data", fetcher=fetcher, pacer=_pacer(),
+                  cursor=cur, manifest=m)
+    assert seen == ["https://x/1", "https://x/2"]  # kept going after the error
+    assert summary["errors"] == 1
+    assert summary["scraped"] == 1
