@@ -180,6 +180,68 @@ def test_build_propagates_category_map(tmp_path):
     assert "Canon/Cat" in csv_text
 
 
+def test_main_category_map_malformed_json_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text("[]", encoding="utf-8")
+    bad_map = tmp_path / "category_map.json"
+    bad_map.write_text("{not valid json", encoding="utf-8")
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+        "--category-map", str(bad_map),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "category map" in captured.err.lower()
+
+
+def test_main_category_map_not_a_dict_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text("[]", encoding="utf-8")
+    list_map = tmp_path / "category_map.json"
+    list_map.write_text(json.dumps(["A > B", "C > D"]), encoding="utf-8")
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+        "--category-map", str(list_map),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "category map" in captured.err.lower()
+
+
+def test_main_category_map_missing_file_returns_2_no_traceback(tmp_path, capsys):
+    cfg_path = tmp_path / "config.json"
+    cfg_path.write_text(json.dumps({"target_domain": "example.com"}), encoding="utf-8")
+    recs_path = tmp_path / "records.json"
+    recs_path.write_text("[]", encoding="utf-8")
+    missing_map = tmp_path / "does_not_exist.json"
+
+    rc = build_dataset.main([
+        "--records", str(recs_path),
+        "--config", str(cfg_path),
+        "--exports", str(tmp_path / "exports"),
+        "--category-map", str(missing_map),
+    ])
+
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert captured.err.strip() != ""
+    assert "category map" in captured.err.lower()
+
+
 def test_extract_categories_cli(tmp_path):
     import build_dataset
     records = tmp_path / "raw.json"
