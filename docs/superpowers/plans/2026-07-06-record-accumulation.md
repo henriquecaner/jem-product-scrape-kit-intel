@@ -171,7 +171,7 @@ def test_flush_recovers_from_corrupt_file(tmp_path, monkeypatch, capsys):
     p = scrape.flush_outputs(_manifest("https://x/1", "one"), cache_dir)
     data = json.loads(p.read_text(encoding="utf-8"))
     assert [r["url"] for r in data] == ["https://x/1"]
-    assert "raw_records" in capsys.readouterr().err.lower() or True  # aviso emitido
+    assert "starting fresh" in capsys.readouterr().err  # fail-open warning emitted
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
