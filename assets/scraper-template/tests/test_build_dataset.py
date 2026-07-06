@@ -165,3 +165,30 @@ def test_build_skips_non_dict_record_without_crashing(tmp_path):
     assert summary["normalize_errors"] == 1
     assert summary["normalized"] == 1
     assert summary["exported"] == 1
+
+
+def test_build_propagates_category_map(tmp_path):
+    import build_dataset
+    raws = [{"url": "u", "raw": {"sku": "P", "product_id": "P", "name": "N",
+                                 "breadcrumbs": ["A", "B"]}}]
+    summary = build_dataset.build(
+        raws, source_site="x", authorization_ref="r",
+        scraped_at="t", exports_dir=str(tmp_path),
+        category_map={"A > B": "Canon/Cat"},
+    )
+    csv_text = (tmp_path / "products.csv").read_text(encoding="utf-8")
+    assert "Canon/Cat" in csv_text
+
+
+def test_extract_categories_cli(tmp_path):
+    import build_dataset
+    records = tmp_path / "raw.json"
+    records.write_text(json.dumps(
+        [{"url": "u", "raw": {"breadcrumbs": ["A", "B"]}}]), encoding="utf-8")
+    out = tmp_path / "cats.json"
+    rc = build_dataset.main([
+        "--records", str(records), "--extract-categories", str(out),
+    ])
+    assert rc == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data[0]["category_path"] == "A > B"
