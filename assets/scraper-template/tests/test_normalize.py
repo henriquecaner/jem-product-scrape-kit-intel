@@ -44,3 +44,27 @@ def test_normalize_defaults_missing_collections():
 def test_normalize_raises_on_incomplete():
     with pytest.raises(ValueError):
         _norm({"sku": "", "name": ""})  # no product_id, no name
+
+
+_BASE = dict(source_site="x", source_url="u", scraped_at="t",
+             authorization_ref="r", raw_ref="")
+
+
+def test_normalize_without_map_is_unchanged():
+    rec = normalize({"sku": "P", "name": "N", "breadcrumbs": ["A", "B"]}, **_BASE)
+    assert rec.category_path == "A > B"
+    assert rec.category_canonical == ""      # default: no map
+
+
+def test_normalize_applies_category_map():
+    m = {"A > B": "Ferramentas/Elétricas"}
+    rec = normalize({"sku": "P", "name": "N", "breadcrumbs": ["A", "B"]},
+                    category_map=m, **_BASE)
+    assert rec.category_canonical == "Ferramentas/Elétricas"
+    assert rec.category_path == "A > B"       # raw preserved
+
+
+def test_normalize_unmapped_category_stays_empty():
+    rec = normalize({"sku": "P", "name": "N", "breadcrumbs": ["Z"]},
+                    category_map={"A > B": "x"}, **_BASE)
+    assert rec.category_canonical == ""
