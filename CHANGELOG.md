@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fix — acúmulo de records entre runs encadeados (Plano 2c / Unidade 1)
+
+Resolve o follow-up de alta prioridade registrado na 0.2.0: `raw_records.json`/`products.csv` eram sobrescritos a cada run, então um scrape encadeado por chunks (`--limit`) ou cron acumulava só o último chunk.
+
+- `jemscrape/records.py` (novo) — `merge_records(existing, new)`: união por `url`, o mais recente vence, mantendo posição; entradas malformadas são ignoradas.
+- `scrape.py:flush_outputs` — passa a ler/mesclar/gravar em `state/raw_records.json` (versionado, persiste no Actions) em vez de sobrescrever em `data/`; fail-open (arquivo acumulado ausente/corrompido começa vazio + aviso, nunca aborta).
+- `build_dataset.build` — resiliente por-registro: um record que falha `normalize()`/`validate()` é contado em `normalize_errors` e pulado, sem abortar o lote inteiro.
+- `assets/github-actions/scrape.yml` — `build_dataset.py --records state/raw_records.json` (era `data/raw_records.json`).
+- Wizard (`scrape-product-catalog/SKILL.md`): documenta que chunking de runs autenticados agora é seguro e recomendado, sem perder chunks anteriores.
+
 ## 0.2.0
 
 ### Plano 3b — sessão autenticada + geo no GitHub Actions
