@@ -137,3 +137,17 @@ def test_main_missing_records_file_returns_2_no_traceback(tmp_path, capsys):
     assert rc == 2
     captured = capsys.readouterr()
     assert captured.err.strip() != ""
+
+
+def test_build_skips_malformed_record(tmp_path):
+    import build_dataset
+    raws = [
+        {"url": "https://x/1", "raw": {"sku": "A", "product_id": "A", "name": "Good"}},
+        {"url": "https://x/2", "raw": {"sku": "", "product_id": "", "name": ""}},  # falha validate()
+    ]
+    summary = build_dataset.build(
+        raws, source_site="x", authorization_ref="ref",
+        scraped_at="2026-07-06T00:00:00+00:00", exports_dir=str(tmp_path),
+    )
+    assert summary["normalize_errors"] == 1
+    assert summary["normalized"] == 1

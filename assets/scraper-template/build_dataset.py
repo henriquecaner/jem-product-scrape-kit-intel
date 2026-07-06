@@ -20,12 +20,18 @@ def build(raw_records, *, source_site, authorization_ref, scraped_at, exports_di
     band_priority = list(band_priority)
     hub_group = set(hub_group)
     records = []
+    normalize_errors = 0
     for item in raw_records:
-        rec = normalize(
-            item["raw"], source_site=source_site, source_url=item["url"],
-            scraped_at=scraped_at, authorization_ref=authorization_ref,
-            raw_ref=item.get("raw_ref", ""),
-        )
+        try:
+            rec = normalize(
+                item["raw"], source_site=source_site, source_url=item["url"],
+                scraped_at=scraped_at, authorization_ref=authorization_ref,
+                raw_ref=item.get("raw_ref", ""),
+            )
+        except (ValueError, KeyError, TypeError) as exc:
+            normalize_errors += 1
+            print(f"[warn] skipping record {item.get('url', '?')}: {exc}", file=sys.stderr)
+            continue
         by_loc = rec.stock.get("by_location")
         if by_loc:
             rec.stock.update(collapse_stock(by_loc, hub_group=hub_group,
@@ -43,7 +49,8 @@ def build(raw_records, *, source_site, authorization_ref, scraped_at, exports_di
     exported = write_csv(records, csv_path)
     write_wiki(records, wiki_path)
     return {"normalized": normalized, "exported": exported,
-            "csv": str(csv_path), "wiki": str(wiki_path)}
+            "csv": str(csv_path), "wiki": str(wiki_path),
+            "normalize_errors": normalize_errors}
 
 
 def main(argv=None):
