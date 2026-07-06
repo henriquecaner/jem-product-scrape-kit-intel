@@ -70,20 +70,20 @@ The file is written atomically (`cache.atomic_write`) — no reader ever sees a 
 
 ## Categorização assistida por LLM (opcional, runtime Local)
 
-`category_canonical` maps each product's raw breadcrumb trail to the canonical JEM taxonomy. The mapping is never done by the engine — it's done by Claude (this agent, runtime Local), then applied deterministically. The flow:
+`category_canonical` mapeia o breadcrumb cru de cada produto para a taxonomia canônica JEM. O mapeamento nunca é feito pelo motor — é feito pelo Claude (este agente, runtime Local) e depois aplicado deterministicamente. O fluxo:
 
-1. Extract the distinct raw categories from the scrape:
+1. Extrair as categorias cruas distintas do scrape:
    ```
    python3 build_dataset.py --records state/raw_records.json --extract-categories categories_to_map.json
    ```
-   This writes `categories_to_map.json` (`[{"category_path": ..., "count": ...}, ...]`, most frequent first) and exits — no export happens on this call.
-2. Claude reads `categories_to_map.json` and writes `category_map.json`, a plain `{raw category_path: canonical category}` dict. Leave out any category you're not confident about — the engine never guesses; an unmapped `category_path` just leaves `category_canonical=""`.
-3. Re-run the build with the map applied:
+   Isso grava `categories_to_map.json` (`[{"category_path": ..., "count": ...}, ...]`, mais frequente primeiro) e encerra — nenhum export ocorre nessa chamada.
+2. O Claude lê `categories_to_map.json` e escreve `category_map.json`, um dict simples `{category_path cru: categoria canônica}`. Deixe de fora qualquer categoria em que você não tenha confiança — o motor nunca chuta; um `category_path` fora do mapa simplesmente deixa `category_canonical=""`.
+3. Rodar o build de novo com o mapa aplicado:
    ```
    python3 build_dataset.py --records state/raw_records.json --category-map category_map.json
    ```
 
-Without `--category-map`, the whole pipeline stays 100% deterministic — no code here ever calls an LLM or makes a network request; `category_map` is a plain dict read from a file. An Actions/Batch path for this step (spec §11) is a future slice, not built yet.
+Sem `--category-map`, o pipeline inteiro permanece 100% determinístico — nenhum código aqui chama um LLM ou faz requisição de rede; `category_map` é um dict comum lido de um arquivo. Um caminho Actions/Batch para esse passo (spec §11) é uma fatia futura, ainda não construída.
 
 ## exports/ is a versioned deliverable
 

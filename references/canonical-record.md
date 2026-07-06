@@ -17,10 +17,11 @@ product_id                         identity key for dedup and resume — normali
 sku, name, brand
 description_raw, description_clean
 breadcrumbs[], division, category_path
-category_canonical                 raw category_path mapped to the canonical JEM taxonomy by
-                                    Claude (runtime Local, via the scrape-normalize-export skill's
-                                    --extract-categories / --category-map flow); "" when no map
-                                    was supplied or the raw category wasn't in it — never guessed
+category_canonical                 category_path cru mapeado para a taxonomia canônica JEM pelo
+                                    Claude (runtime Local, via o fluxo --extract-categories /
+                                    --category-map da skill scrape-normalize-export); "" quando
+                                    nenhum mapa foi fornecido ou a categoria crua não estava nele
+                                    — nunca é um chute
 images[]                           full-res URLs
 specs{}                            technical attribute key:value
 variants[]                         each variant carries its own prices[]
@@ -50,8 +51,8 @@ total_stock, image_url, source_url, description_clean, category_canonical
 ```
 
 Notes on the mapping:
-- `category_canonical` was appended (schema 1.1) as the last column, so it
-  doesn't shift the 17 columns of schema 1.0 for positional consumers.
+- `category_canonical` foi anexada (schema 1.1) como última coluna, para não
+  deslocar as 17 colunas do schema 1.0 para consumidores posicionais.
 - `breadcrumb` is `breadcrumbs[]` joined with `" > "`.
 - `best_price`, `price_band`, `price_source` come from `prices[0]` (empty
   string if no prices).
