@@ -21,8 +21,8 @@ Flags:
 - `--records` (required) — path to a JSON file: a list of raw record entries (each with `url`, `raw`, and optionally `raw_ref`).
 - `--config` — path to `config.json` (defaults to the one next to the script). Must have `target_domain` set.
 - `--exports` — output directory (defaults to `exports/` next to the script).
-- `--category-map` — optional path to a `{raw category_path: canonical}` JSON dict; applied to every record's `category_canonical`. Invalid/unreadable when passed → exit 2 (fail-closed, since it was explicitly requested).
-- `--extract-categories` — optional path; when set, writes the distinct raw category paths from `--records` to this path and exits 0 without exporting anything (no `--config` needed for this mode). See "Categorização assistida por LLM" below.
+- `--category-map` — caminho opcional para um dict JSON `{raw category_path: canonical}`; aplicado ao `category_canonical` de cada registro. Inválido/ilegível quando informado → exit 2 (fail-closed, já que foi explicitamente solicitado).
+- `--extract-categories` — caminho opcional; quando informado, grava as categorias cruas distintas de `--records` nesse caminho e sai com 0 sem exportar nada (não exige `--config` nesse modo). Ver "Categorização assistida por LLM" abaixo.
 
 The orchestrator (`build_dataset.build`) does three things in order:
 

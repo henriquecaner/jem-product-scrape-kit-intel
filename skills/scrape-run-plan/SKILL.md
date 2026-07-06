@@ -46,7 +46,7 @@ Pull risks straight from the warm-up's signals and the checklist it generated, p
 |---|---|---|
 | SPA / JS-rendered pages | HTTP-only fetch sees no product data | Switch `fetch_mode` to `browser` (Playwright) |
 | Login / paywall detected | Content behind auth is invisible to the scrape | Capture a login session locally (`auth_capture.py` → `.scrape-session.json`), set `auth_required: true` + `login_url`, and for Actions push `SCRAPE_STORAGE_STATE`; then re-run the warm-up authenticated |
-| Auth token expires mid-run | The run aborts fail-closed (`AuthExpiredError`) once the session dies | Chunk the run to fit inside the token's life; recapture the session before scheduled runs (the daily refresh ritual, `references/auth-session.md`) |
+| Auth token expires mid-run | The run aborts fail-closed (`AuthExpiredError`) once the session dies | Chunk the run to fit inside the token's life; recapture the session before scheduled runs (the daily refresh ritual, `references/auth-session.md`). Chunking is safe — chained (chunked/cron) runs accumulate correctly in `state/raw_records.json` by url, so an earlier chunk is never discarded. |
 | Anti-bot challenge / geo-block | Requests get blocked or throttled | Route through a country proxy on the GitHub Actions runtime (automatic VM promotion is not built — it's a manual, IT-driven fallback) |
 | Low field coverage (name/SKU/price/image) | Exports will have gaps | Fix the parser and re-run the warm-up before proceeding |
 | `robots_status: disallowed` | Compliance gate blocks the run | Apply the authorization-type precedence matrix (§10.2) — hard block for `public_competitor`; override only with `robots_override_ref` for `contracted_partner`; `own_account` is allowed without one |

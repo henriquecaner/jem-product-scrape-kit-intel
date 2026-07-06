@@ -38,7 +38,7 @@ same 0600, gitignored, hook-guarded treatment as the other gate files.
 5. **Scrape** — `python scrape.py --limit 200`, a resumable chunk; picks up
    from `state/cursor.json`. `HTTPS_PROXY` is passed through from secrets when
    geo egress is needed (see `geo-proxy.md`).
-6. **Build dataset** — `python build_dataset.py --records data/raw_records.json`
+6. **Build dataset** — `python build_dataset.py --records state/raw_records.json`
    assembles `exports/` (non-fatal today; wiring from `scrape.py`'s raw output
    to this step is per-project via `site_adapter`).
 7. **Commit checkpoint** — commits `state/` and `exports/` with a bot identity;
