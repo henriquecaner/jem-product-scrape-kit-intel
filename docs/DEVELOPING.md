@@ -18,7 +18,7 @@ python3 -m venv .venv && .venv/bin/python -m pip install pytest
 .venv/bin/python -m pytest -q
 ```
 
-São 263 passando e 1 skip (o smoke do Playwright, que pula quando o Playwright não está instalado). O núcleo é stdlib-only, então os testes não fazem rede: tudo é injetado (fetcher, clock, urlopen, render_fn).
+São 326 passando e 2 skip (smokes do Playwright, que pulam quando o Playwright não está instalado). O núcleo é stdlib-only, então os testes não fazem rede: tudo é injetado (fetcher, clock, urlopen, render_fn).
 
 ## A regra que segura o projeto: stdlib-only no núcleo
 

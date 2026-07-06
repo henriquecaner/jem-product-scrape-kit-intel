@@ -44,7 +44,7 @@ Planos: `.../scraper-engine-core.md` (1), `...normalize-export.md` (2), `...warm
 
 ```bash
 cd <repo>
-.venv/bin/python -m pytest -q     # 263 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # 326 passando (+2 skip: smokes Playwright)
 ```
 O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m venv .venv && .venv/bin/python -m pip install pytest`.
 

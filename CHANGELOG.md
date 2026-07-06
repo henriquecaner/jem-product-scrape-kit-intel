@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 ### Fix — acúmulo de records entre runs encadeados (Plano 2c / Unidade 1)
 
@@ -31,6 +31,13 @@ O run-plan (Markdown) agora também renderiza em HTML e PDF, para a etapa de apr
 - `drivers/render_pdf.py` (novo) — descobre o Chrome via Playwright e imprime o HTML em PDF; sem Chrome, grava só o HTML e retorna `pdf: None` (nunca levanta).
 - `render_run_plan.py` (novo, CLI raiz) — `python3 render_run_plan.py --markdown docs/run-plan.md --out docs`.
 - `skills/scrape-run-plan/SKILL.md` documenta os três níveis de output (Markdown sempre, HTML sempre, PDF quando o Chrome está disponível).
+
+### Endurecimento (review por-unidade + review de branch)
+
+Correções TDD achadas nos reviews de cada unidade e no review final da branch (suíte 300 → 326 passando, +2 skip):
+
+- `build_dataset.build` — um item de `raw_records` não-dict não aborta mais o export: o handler de erro deixou de assumir `dict` (evita `AttributeError` no caminho `--records` externo).
+- `drivers/render_pdf.py` — o render de PDF virou best-effort de verdade: uma falha no launch do Chrome / `page.pdf()` cai no fallback HTML em vez de propagar, e um markdown ausente/ilegível sai com exit 2 limpo pelo CLI, honrando "a aprovação nunca trava".
 
 ## 0.2.0
 
