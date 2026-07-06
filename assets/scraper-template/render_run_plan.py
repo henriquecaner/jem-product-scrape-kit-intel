@@ -9,7 +9,12 @@ def main(argv=None):
     parser.add_argument("--out", default="docs")
     args = parser.parse_args(argv)
     from drivers.render_pdf import render_pdf
-    result = render_pdf(args.markdown, args.out)
+    try:
+        result = render_pdf(args.markdown, args.out)
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"[run-plan] markdown file not found or unreadable: {exc}",
+              file=sys.stderr)
+        return 2
     if result["pdf"]:
         print(f"[run-plan] PDF -> {result['pdf']}")
     else:

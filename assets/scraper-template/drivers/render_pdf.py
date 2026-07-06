@@ -2,6 +2,7 @@
 the run-plan HTML to PDF. If Chrome isn't available, falls back to writing the
 HTML only — an approval step never blocks on missing software. Playwright is a
 guarded optional dependency; this module lives in drivers/, never in the core."""
+import sys
 from pathlib import Path
 
 from jemscrape.md_to_html import md_to_html
@@ -42,12 +43,17 @@ def render_pdf(markdown_path, out_dir):
         return {"html": str(html_path), "pdf": None}
 
     pdf_path = out / "run-plan.pdf"
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        try:
-            page = browser.new_page()
-            page.set_content(html, wait_until="load")
-            page.pdf(path=str(pdf_path), format="A4", print_background=True)
-        finally:
-            browser.close()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.set_content(html, wait_until="load")
+                page.pdf(path=str(pdf_path), format="A4", print_background=True)
+            finally:
+                browser.close()
+    except Exception as exc:
+        print(f"[render_pdf] PDF render failed, falling back to HTML: {exc}",
+              file=sys.stderr)
+        return {"html": str(html_path), "pdf": None}
     return {"html": str(html_path), "pdf": str(pdf_path)}
