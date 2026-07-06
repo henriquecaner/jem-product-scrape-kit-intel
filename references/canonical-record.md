@@ -3,12 +3,12 @@
 The JEM canonical record is the single interface between the scraping engine
 (Layer 1) and the objective skills (Layer 2, roadmap). It's implemented in
 `jemscrape/canonical.py` as `CanonicalRecord`, a dataclass with `schema_version
-= "1.0"`.
+= "1.1"`.
 
 ## Fields
 
 ```
-schema_version                     "1.0" — additive by default, breaking changes bump major
+schema_version                     "1.1" — additive by default, breaking changes bump major
 source_site, source_url, scraped_at
 authorization_ref                  id of the .scrape-authorization.json that authorized the capture
 product_id                         identity key for dedup and resume — normalized SKU or the
@@ -17,6 +17,10 @@ product_id                         identity key for dedup and resume — normali
 sku, name, brand
 description_raw, description_clean
 breadcrumbs[], division, category_path
+category_canonical                 raw category_path mapped to the canonical JEM taxonomy by
+                                    Claude (runtime Local, via the scrape-normalize-export skill's
+                                    --extract-categories / --category-map flow); "" when no map
+                                    was supplied or the raw category wasn't in it — never guessed
 images[]                           full-res URLs
 specs{}                            technical attribute key:value
 variants[]                         each variant carries its own prices[]
@@ -33,7 +37,7 @@ raw_ref                            pointer to the cached raw file
 non-empty; missing fields raise `ValueError`. `product_id` is the identity key
 used for dedup and checkpoint resume — never blank.
 
-## CSV export (`to_row`, 17 columns)
+## CSV export (`to_row`, 18 columns)
 
 `jemscrape/export_csv.py` writes `exports/products.csv` with a fixed column
 order (`CSV_COLUMNS`), independent of dict key ordering, so downstream imports
@@ -42,10 +46,12 @@ order (`CSV_COLUMNS`), independent of dict key ordering, so downstream imports
 ```
 schema_version, product_id, sku, name, brand, division, category_path,
 breadcrumb, best_price, price_band, price_source, list_price, cost_price,
-total_stock, image_url, source_url, description_clean
+total_stock, image_url, source_url, description_clean, category_canonical
 ```
 
 Notes on the mapping:
+- `category_canonical` was appended (schema 1.1) as the last column, so it
+  doesn't shift the 17 columns of schema 1.0 for positional consumers.
 - `breadcrumb` is `breadcrumbs[]` joined with `" > "`.
 - `best_price`, `price_band`, `price_source` come from `prices[0]` (empty
   string if no prices).

@@ -21,6 +21,8 @@ Flags:
 - `--records` (required) — path to a JSON file: a list of raw record entries (each with `url`, `raw`, and optionally `raw_ref`).
 - `--config` — path to `config.json` (defaults to the one next to the script). Must have `target_domain` set.
 - `--exports` — output directory (defaults to `exports/` next to the script).
+- `--category-map` — optional path to a `{raw category_path: canonical}` JSON dict; applied to every record's `category_canonical`. Invalid/unreadable when passed → exit 2 (fail-closed, since it was explicitly requested).
+- `--extract-categories` — optional path; when set, writes the distinct raw category paths from `--records` to this path and exits 0 without exporting anything (no `--config` needed for this mode). See "Categorização assistida por LLM" below.
 
 The orchestrator (`build_dataset.build`) does three things in order:
 
@@ -32,7 +34,7 @@ It prints a one-line summary: `{"normalized": N, "exported": M, "csv": "...", "w
 
 ## The canonical record is versioned
 
-`CanonicalRecord.schema_version` (currently `"1.0"`) travels with every record and every CSV row. Downstream skills (Camada 2 — the ones that consume the catalog for a specific target like Shopify, GMC, NetSuite) read this field to know what shape to expect. If the schema changes, it bumps here first. Don't hand a Camada-2 skill a dataset without checking this field matches what it expects.
+`CanonicalRecord.schema_version` (currently `"1.1"`) travels with every record and every CSV row. Downstream skills (Camada 2 — the ones that consume the catalog for a specific target like Shopify, GMC, NetSuite) read this field to know what shape to expect. If the schema changes, it bumps here first. Don't hand a Camada-2 skill a dataset without checking this field matches what it expects.
 
 ## Reconciliation rules
 
@@ -44,15 +46,17 @@ Three rules run before export, in this order:
 
 All three are driven by config keys: `band_priority`, `hub_group`, `ireland_branch` — set them in `config.json` (`config.json.example` ships them empty; the shape is in `dedup.py` and the `build_dataset` tests). Without a `band_priority` list, no price-band reduction happens and all prices from the raw record are kept as-is.
 
-## The 17-column CSV
+## The 18-column CSV
 
-`exports/products.csv` (`export_csv.write_csv`) has a fixed column order — same 17 columns every run, extra fields from `to_row()` are ignored, missing ones write empty:
+`exports/products.csv` (`export_csv.write_csv`) has a fixed column order — same 18 columns every run, extra fields from `to_row()` are ignored, missing ones write empty:
 
 ```
 schema_version, product_id, sku, name, brand, division, category_path, breadcrumb,
 best_price, price_band, price_source, list_price, cost_price, total_stock,
-image_url, source_url, description_clean
+image_url, source_url, description_clean, category_canonical
 ```
+
+`category_canonical` is the last column and defaults to an empty string — it's only populated when `build_dataset.py` runs with `--category-map` (see below). `category_path` (the raw breadcrumb trail) is unaffected either way.
 
 Two things make it Excel-safe:
 - Line terminator is `\n`, not the csv module default `\r\n`. This avoids the classic Windows/Excel bug where you get `\r\r\n` and rows come out with a blank line between them.
@@ -63,6 +67,23 @@ The file is written atomically (`cache.atomic_write`) — no reader ever sees a 
 ## The wiki export
 
 `exports/wiki/` (`export_wiki.write_wiki`) writes one markdown file per product, filed under a directory per breadcrumb level, plus a top-level `INDEX.md` linking every product. Filenames and directory names go through `safe_name`, which strips anything outside `[A-Za-z0-9 ._()-]` and refuses an all-dots result (so a breadcrumb of `".."` can't become a path segment). After assembling the full path, `write_wiki` double-checks it still resolves inside the wiki root before writing — belt and suspenders against path traversal from a malicious breadcrumb or product name.
+
+## Categorização assistida por LLM (opcional, runtime Local)
+
+`category_canonical` maps each product's raw breadcrumb trail to the canonical JEM taxonomy. The mapping is never done by the engine — it's done by Claude (this agent, runtime Local), then applied deterministically. The flow:
+
+1. Extract the distinct raw categories from the scrape:
+   ```
+   python3 build_dataset.py --records state/raw_records.json --extract-categories categories_to_map.json
+   ```
+   This writes `categories_to_map.json` (`[{"category_path": ..., "count": ...}, ...]`, most frequent first) and exits — no export happens on this call.
+2. Claude reads `categories_to_map.json` and writes `category_map.json`, a plain `{raw category_path: canonical category}` dict. Leave out any category you're not confident about — the engine never guesses; an unmapped `category_path` just leaves `category_canonical=""`.
+3. Re-run the build with the map applied:
+   ```
+   python3 build_dataset.py --records state/raw_records.json --category-map category_map.json
+   ```
+
+Without `--category-map`, the whole pipeline stays 100% deterministic — no code here ever calls an LLM or makes a network request; `category_map` is a plain dict read from a file. An Actions/Batch path for this step (spec §11) is a future slice, not built yet.
 
 ## exports/ is a versioned deliverable
 
@@ -77,4 +98,4 @@ Unlike `data/` (the raw scrape cache, git-ignored — see `assets/project-skelet
 
 ## References
 
-- `references/canonical-record.md` — the versioned JEM canonical record + the 17 CSV columns.
+- `references/canonical-record.md` — the versioned JEM canonical record + the 18 CSV columns.
