@@ -1,6 +1,6 @@
 from dataclasses import dataclass, asdict
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 _REQUIRED = ("source_site", "source_url", "product_id", "name")
 
@@ -20,6 +20,7 @@ class CanonicalRecord:
     breadcrumbs: list
     division: str
     category_path: str
+    category_canonical: str
     images: list
     specs: dict
     prices: list
@@ -56,6 +57,7 @@ class CanonicalRecord:
             "division": self.division,
             "category_path": self.category_path,
             "breadcrumb": " > ".join(self.breadcrumbs),
+            "category_canonical": self.category_canonical,
             "best_price": price.get("value", ""),
             "price_band": price.get("band", ""),
             "price_source": price.get("source", ""),

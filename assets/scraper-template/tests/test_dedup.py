@@ -6,7 +6,7 @@ def _rec(pid, list_price):
     return CanonicalRecord(
         source_site="e", source_url="u", scraped_at="t", authorization_ref="a",
         product_id=pid, sku=pid, name="n", brand="b", description_raw="", description_clean="",
-        breadcrumbs=[], division="", category_path="", images=[], specs={},
+        breadcrumbs=[], division="", category_path="", category_canonical="", images=[], specs={},
         prices=[], list_price=list_price, cost_price=None, variants=[],
         stock={}, attachments=[], related=[], raw_ref="",
     )

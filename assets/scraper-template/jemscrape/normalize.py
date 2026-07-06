@@ -32,6 +32,7 @@ def normalize(raw, *, source_site, source_url, scraped_at, authorization_ref, ra
         breadcrumbs=breadcrumbs,
         division=raw.get("division") or (breadcrumbs[0] if breadcrumbs else ""),
         category_path=" > ".join(breadcrumbs),
+        category_canonical="",
         images=list(raw.get("images") or []),
         specs=dict(raw.get("specs") or {}),
         prices=list(raw.get("prices") or []),

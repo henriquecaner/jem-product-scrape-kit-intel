@@ -7,6 +7,7 @@ def _rec(pid, name, crumbs):
         source_site="e", source_url="https://e/p/" + pid, scraped_at="t", authorization_ref="a",
         product_id=pid, sku=pid, name=name, brand="Acme", description_raw="", description_clean="Desc.",
         breadcrumbs=crumbs, division=crumbs[0] if crumbs else "", category_path=" > ".join(crumbs),
+        category_canonical="",
         images=["https://e/i/" + pid + ".jpg"],
         specs={}, prices=[{"value": 9.5, "band": "PLE-J015", "source": "jem_band"}],
         list_price=None, cost_price=None, variants=[], stock={"total": 3},
