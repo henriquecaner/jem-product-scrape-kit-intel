@@ -23,6 +23,15 @@ Normalização determinística ganha um passo opcional de categorização: o mot
 - `build_dataset.py` — `--extract-categories <out.json>` escreve as categorias distintas e sai sem exportar (não exige `--config`); `--category-map <path>` aplica o mapa no build; caminho inválido/ilegível quando explicitamente pedido → exit 2 (fail-closed).
 - `skills/scrape-normalize-export/SKILL.md` + `references/canonical-record.md` documentam o fluxo extract → mapear (Claude, runtime Local) → aplicar, e o schema 1.1.
 
+### Feat — run-plan em PDF (Plano 2c / Unidade 3)
+
+O run-plan (Markdown) agora também renderiza em HTML e PDF, para a etapa de aprovação nunca travar por falta de software.
+
+- `jemscrape/md_to_html.py` (novo) — conversor Markdown→HTML mínimo, stdlib puro, cobrindo o subset do template do run-plan (H1/H2, listas, tabelas GFM, negrito, parágrafos); escapa `<`/`>`/`&` do conteúdo.
+- `drivers/render_pdf.py` (novo) — descobre o Chrome via Playwright e imprime o HTML em PDF; sem Chrome, grava só o HTML e retorna `pdf: None` (nunca levanta).
+- `render_run_plan.py` (novo, CLI raiz) — `python3 render_run_plan.py --markdown docs/run-plan.md --out docs`.
+- `skills/scrape-run-plan/SKILL.md` documenta os três níveis de output (Markdown sempre, HTML sempre, PDF quando o Chrome está disponível).
+
 ## 0.2.0
 
 ### Plano 3b — sessão autenticada + geo no GitHub Actions

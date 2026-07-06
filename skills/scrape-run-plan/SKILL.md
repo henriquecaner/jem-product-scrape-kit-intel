@@ -61,9 +61,15 @@ If `requires_approval` is `true` in that record, this briefing is the document t
 
 ## Output
 
-Render the briefing as a Markdown file (for example `docs/run-plan.md` in the project scaffold). This is the v1 deliverable — plain, readable, works everywhere without extra tooling.
+The output has three levels:
 
-A PDF render is a documented future enhancement, not something this skill does today. The design spec (§12) describes a future `render_pdf.py` that would discover a local Chrome binary and fall back to HTML/Markdown if it can't find one, specifically so an approval step never blocks on missing software. Until that driver exists, Markdown is the only output format — do not tell the operator a PDF is available.
+1. **Markdown** (always) — write the briefing to a Markdown file, for example `docs/run-plan.md` in the project scaffold. This is the base deliverable — plain, readable, works everywhere without extra tooling.
+2. **HTML** (always) — `render_run_plan.py` converts that Markdown to a self-contained, styled HTML file via `jemscrape/md_to_html.py` (stdlib, no dependency), written next to the Markdown as `run-plan.html`.
+3. **PDF** (when Chrome is available) — the same command discovers a local Chrome through Playwright and prints the HTML to `run-plan.pdf` (`drivers/render_pdf.py`, spec §12). When Chrome isn't installed, it falls back to the HTML output instead of failing — an approval step never blocks on missing software.
+
+Run it with `python3 render_run_plan.py --markdown docs/run-plan.md --out docs`. Tell the operator which artifact they actually got (PDF, or HTML fallback) — don't assume a PDF exists without checking the command's output.
+
+If `requires_approval` is `true`, `.scrape-approval.json` can hash whichever artifact (PDF or HTML) the operator actually reviewed and signed off on.
 
 ## Briefing template
 
