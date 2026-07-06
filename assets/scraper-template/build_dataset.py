@@ -28,9 +28,10 @@ def build(raw_records, *, source_site, authorization_ref, scraped_at, exports_di
                 scraped_at=scraped_at, authorization_ref=authorization_ref,
                 raw_ref=item.get("raw_ref", ""),
             )
-        except (ValueError, KeyError, TypeError) as exc:
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
             normalize_errors += 1
-            print(f"[warn] skipping record {item.get('url', '?')}: {exc}", file=sys.stderr)
+            url = item.get("url", "?") if isinstance(item, dict) else "?"
+            print(f"[warn] skipping record {url}: {exc}", file=sys.stderr)
             continue
         by_loc = rec.stock.get("by_location")
         if by_loc:

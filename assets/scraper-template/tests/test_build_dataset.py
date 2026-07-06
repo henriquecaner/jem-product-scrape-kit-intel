@@ -151,3 +151,17 @@ def test_build_skips_malformed_record(tmp_path):
     )
     assert summary["normalize_errors"] == 1
     assert summary["normalized"] == 1
+
+
+def test_build_skips_non_dict_record_without_crashing(tmp_path):
+    raws = [
+        "junk",  # não é dict: item["raw"] levanta TypeError, item.get(...) no handler não pode quebrar
+        {"url": "https://x/1", "raw": {"sku": "A", "product_id": "A", "name": "Good"}},
+    ]
+    summary = build_dataset.build(
+        raws, source_site="x", authorization_ref="ref",
+        scraped_at="2026-07-06T00:00:00+00:00", exports_dir=str(tmp_path),
+    )
+    assert summary["normalize_errors"] == 1
+    assert summary["normalized"] == 1
+    assert summary["exported"] == 1
