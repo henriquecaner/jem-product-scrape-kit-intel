@@ -14,7 +14,7 @@ Estado canônico do projeto: `docs/superpowers/HANDOFF.md` (v1 completa + Plano 
 # Setup (uma vez; .venv é gitignored — PEP 668 na system Python)
 python3 -m venv .venv && .venv/bin/python -m pip install pytest
 
-# Suíte completa (263 passando + 1 skip: smoke Playwright quando ausente)
+# Suíte completa (326 passando + 2 skip: smokes Playwright quando ausente)
 .venv/bin/python -m pytest -q
 
 # Um arquivo ou um teste específico

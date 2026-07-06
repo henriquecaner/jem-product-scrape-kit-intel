@@ -37,14 +37,26 @@ def preflight(config_path, authz_path, now):
 
 
 def flush_outputs(manifest, cache_dir):
-    """Write the manifest + the records file build_dataset consumes. Called on
-    both a clean finish and an AuthExpired abort, so a mid-run token death never
-    discards the records already scraped this invocation."""
+    """Write the manifest + the accumulated records file build_dataset consumes.
+    Called on both a clean finish and an AuthExpired abort. Records accumulate by
+    url across chained runs (merge_records), so a chunked/cron run doesn't drop
+    every chunk but the last. The file lives under state/ (versioned, persists on
+    the Actions runtime, unlike git-ignored data/). Fail-open: a missing/corrupt
+    accumulator starts empty with a warning — never aborts and discards this run."""
     manifest.write(HERE / "exports" / "scrape_manifest.json")
     from jemscrape.cache import atomic_write
-    records_path = cache_dir / "raw_records.json"
-    atomic_write(records_path, json.dumps(manifest.records_for_build(cache_dir),
-                                          ensure_ascii=False, indent=2))
+    from jemscrape.records import merge_records
+    records_path = HERE / "state" / "raw_records.json"
+    existing = []
+    if records_path.exists():
+        try:
+            loaded = json.loads(records_path.read_text(encoding="utf-8"))
+            existing = loaded if isinstance(loaded, list) else []
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"[warn] could not read {records_path} ({exc}); starting fresh",
+                  file=sys.stderr)
+    merged = merge_records(existing, manifest.records_for_build(cache_dir))
+    atomic_write(records_path, json.dumps(merged, ensure_ascii=False, indent=2))
     return records_path
 
 

@@ -10,6 +10,7 @@ def _rec(**over):
         product_id="A1", sku="A1", name="Widget", brand="Acme",
         description_raw="<b>raw</b>", description_clean="raw",
         breadcrumbs=["Fire", "Detectors"], division="Fire", category_path="Fire > Detectors",
+        category_canonical="",
         images=["https://ex.com/i/1.jpg"], specs={"weight": "2kg"},
         prices=[{"value": 21.86, "currency": "GBP", "source": "jem_band", "band": "PLE-J015"}],
         list_price=19.67, cost_price=None,
@@ -21,7 +22,7 @@ def _rec(**over):
 
 
 def test_schema_version_default():
-    assert _rec().schema_version == SCHEMA_VERSION == "1.0"
+    assert _rec().schema_version == SCHEMA_VERSION == "1.1"
 
 
 def test_validate_passes_on_complete_record():
@@ -47,7 +48,7 @@ def test_to_row_flattens_expected_columns():
     assert row["price_source"] == "jem_band"
     assert row["image_url"] == "https://ex.com/i/1.jpg"
     assert row["total_stock"] == 5
-    assert row["schema_version"] == "1.0"
+    assert row["schema_version"] == "1.1"
 
 
 def test_to_row_blank_when_no_price_or_image():
@@ -73,3 +74,19 @@ def test_to_row_non_dict_first_price_does_not_crash():
 def test_to_dict_is_json_serializable():
     import json
     json.dumps(_rec().to_dict())  # no raise
+
+
+def test_category_canonical_defaults_empty_and_serializes():
+    from jemscrape.canonical import CanonicalRecord, SCHEMA_VERSION
+    rec = CanonicalRecord(
+        source_site="x", source_url="u", scraped_at="t", authorization_ref="r",
+        product_id="P", sku="P", name="N", brand="", description_raw="",
+        description_clean="", breadcrumbs=["A", "B"], division="A",
+        category_path="A > B", category_canonical="", images=[], specs={}, prices=[], list_price=None,
+        cost_price=None, variants=[], stock={}, attachments=[], related=[], raw_ref="",
+    )
+    assert rec.category_canonical == ""
+    assert rec.to_row()["category_canonical"] == ""
+    assert SCHEMA_VERSION == "1.1"
+    rec.category_canonical = "Ferramentas"
+    assert rec.to_row()["category_canonical"] == "Ferramentas"

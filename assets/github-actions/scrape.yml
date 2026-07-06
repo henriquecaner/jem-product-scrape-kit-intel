@@ -40,7 +40,7 @@ jobs:
 
       - name: Build dataset (exports)
         # Records-file wiring (scrape -> build_dataset) is per-project via site_adapter; kept non-fatal.
-        run: python build_dataset.py --records data/raw_records.json || echo "build_dataset skipped"
+        run: python build_dataset.py --records state/raw_records.json || echo "build_dataset skipped"
 
       - name: Commit checkpoint
         run: |

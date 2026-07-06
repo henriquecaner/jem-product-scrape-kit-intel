@@ -18,7 +18,7 @@ Construído por SDD (7 grupos, review por-task em Sonnet 5 + review de branch in
 - `drivers/auth_capture.py` + CLI `auth_capture.py` (captura headed local, proxy no launch, `.scrape-session.json` em 0600, imprime validade + `gh secret set`; nunca faz push). Secret `SCRAPE_STORAGE_STATE` condicional (`auth_required`) em `actions_setup.py`/`deploy_actions.py`/`scrape.yml`, via stdin nunca argv. Blindagem: gitignore + `precheck.py`. Config valida `auth_required`/`login_url`. `references/auth-session.md`.
 - Reviews pegaram e corrigiram: RFC 6265 no domain-match, flush de records no abort, 0600 na sessão, browser path não-fail-closed em 401/403, `ConfigError` de proxy sem gate, dead code.
 
-**⚠️ Follow-up de alta prioridade (achado da review de branch; fora do escopo 3b):** `raw_records.json`/`products.csv` são **sobrescritos** a cada run — `Manifest.records_for_build` só enxerga a invocação atual, e `build_dataset`/`export_csv` fazem overwrite, não merge. Um scrape encadeado por chunks (`--limit`) ou cron acumula **só o último chunk** no entregável. Latente desde o Plano 5 (`--limit`+cron), independente de auth, mas o fluxo auth+cron do 3b torna isso o **modo normal de operação**. Resolver (merge/append de records em `build_dataset`, lendo o cache `data/` versionado ou acumulando no commit) **antes de rodar auth (ou qualquer cron chunked) contra um catálogo maior que um chunk**, senão o CSV final perde tudo menos o último pedaço.
+**✅ RESOLVIDO (2026-07-06, Plano 2c/Unidade 1 — `docs/superpowers/plans/2026-07-06-record-accumulation.md`):** `raw_records.json`/`products.csv` eram **sobrescritos** a cada run — `Manifest.records_for_build` só enxergava a invocação atual, e `build_dataset`/`export_csv` faziam overwrite, não merge. Um scrape encadeado por chunks (`--limit`) ou cron acumulava **só o último chunk** no entregável. Latente desde o Plano 5 (`--limit`+cron), independente de auth, mas o fluxo auth+cron do 3b tornava isso o **modo normal de operação**. Corrigido: `jemscrape/records.py` (`merge_records`, união por `url`, o mais recente vence) + `scrape.py:flush_outputs` agora lê/mescla/grava em `state/raw_records.json` (versionado, persiste no Actions) em vez de sobrescrever em `data/`; fail-open se o acumulado estiver ausente/corrompido. `build_dataset.build` ganhou resiliência por-registro (`normalize_errors`) para um record malformado não abortar o lote. Workflow (`scrape.yml`) e wizard (`scrape-product-catalog/SKILL.md`) atualizados para o novo caminho.
 
 ## Release (2026-07-03)
 **v0.1.0 publicada:** tag `v0.1.0` + release no GitHub com o zip anexado — https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.1.0. Link estável pra distribuição (repo privado: quem instala precisa de acesso). Pendências restantes: smoke de instalação (A abaixo), um scrape real ponta-a-ponta, smoke em Windows JEM.
@@ -44,7 +44,7 @@ Planos: `.../scraper-engine-core.md` (1), `...normalize-export.md` (2), `...warm
 
 ```bash
 cd <repo>
-.venv/bin/python -m pytest -q     # 263 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # 326 passando (+2 skip: smokes Playwright)
 ```
 O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m venv .venv && .venv/bin/python -m pip install pytest`.
 
@@ -67,7 +67,6 @@ O `.venv/` é gitignored (PEP 668 na system Python). Num clone novo: `python3 -m
 
 ## Deferido / follow-ups abertos
 - **Refresh de token 100% automatizado + promoção a VM** (parte do 3b não construída, YAGNI): a captura é intrinsecamente local (só a máquina do usuário loga); sites que exigem re-login interativo dentro da vida do token disparam promoção a VM (dirigida pela TI, §19). Só construir quando houver alvo real que precise.
-- **⚠️ Acúmulo de records entre runs encadeados** (achado da review de branch do 3b, pré-existente do Plano 5): ver o ⚠️ na seção "Plano 3b" acima. `build_dataset`/export sobrescrevem em vez de acumular; cron/chunked entrega só o último chunk. Alta prioridade antes de rodar qualquer scrape multi-chunk (auth ou público) contra catálogo grande.
 
 > Numeração: warm-up = Plano 4 (Actions→5, Onboarding→6, Packaging→7; traceability do Plano 1 já bate). Plano 3 dividido em 3a e 3b, ambos feitos (spec rev4 §5.2 + spec 2026-07-03).
 

@@ -31,7 +31,10 @@ the cursor owns progress. The two never mix.
 2. `gh secret set SCRAPE_STORAGE_STATE < .scrape-session.json`.
 3. Schedule the cron to fire shortly after the daily refresh, so each run
    starts well inside the token's life. Runs are chunked (`scrape.py --limit`)
-   to finish before the token expires.
+   to finish before the token expires. Chunking is safe: chained runs
+   (chunked or cron) accumulate correctly in `state/raw_records.json`,
+   merged by url (`jemscrape/records.py`) — an earlier chunk's records are
+   never dropped when a later chunk runs.
 
 On Actions, `actions_setup.py` materializes `.scrape-session.json` from the
 `SCRAPE_STORAGE_STATE` secret (only when `auth_required`), fail-closed: a

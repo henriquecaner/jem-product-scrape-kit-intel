@@ -8,7 +8,7 @@ def _rec(pid, name, price):
     return CanonicalRecord(
         source_site="e", source_url="https://e/p", scraped_at="t", authorization_ref="a",
         product_id=pid, sku=pid, name=name, brand="b", description_raw="", description_clean="d",
-        breadcrumbs=["Fire"], division="Fire", category_path="Fire", images=[],
+        breadcrumbs=["Fire"], division="Fire", category_path="Fire", category_canonical="", images=[],
         specs={}, prices=[{"value": price, "band": "PLE-J015", "source": "jem_band"}],
         list_price=None, cost_price=None, variants=[], stock={"total": 3},
         attachments=[], related=[], raw_ref="",
@@ -61,3 +61,8 @@ def test_write_csv_sanitizes_formula_injection_prefix(tmp_path):
         rows = list(csv.DictReader(f))
     assert rows[0]["name"] == "'" + malicious_name
     assert rows[1]["name"] == "Normal Widget"
+
+
+def test_csv_has_category_canonical_column():
+    from jemscrape.export_csv import CSV_COLUMNS
+    assert CSV_COLUMNS[-1] == "category_canonical"

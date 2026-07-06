@@ -4,7 +4,7 @@ Plugin do Claude Code que ajuda o time da JEM a trazer catálogos de produtos de
 
 Você conversa com um assistente que pergunta o que precisa, confere se o scraping é permitido, testa o site antes e só então roda. No fim, sai uma planilha pronta pro Excel e uma wiki com uma página por produto.
 
-**Versão atual:** v0.2.0 ([release com o instalador](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.2.0)). Adiciona scraping autenticado + saída por IP do país, sobre a fundação da v0.1.0.
+**Versão atual:** v0.3.0 ([release com o instalador](https://github.com/henriquecaner/jem-product-scrape-kit-intel/releases/tag/v0.3.0)). Corrige o acúmulo de dados em scrapes agendados e adiciona categorização com ajuda do Claude e o plano de aprovação em PDF, sobre o scraping autenticado + geo da v0.2.0.
 
 ## Como começar
 
@@ -22,7 +22,10 @@ Pra acompanhar um scrape em andamento: `/scrape-status`.
 - **Entra em sites com login.** Quando o site exige conta, você loga uma vez na sua máquina e o motor reusa essa sessão nos runs seguintes, inclusive nos agendados. Se o token expira no meio, ele para e avisa em vez de coletar página de login como se fosse produto.
 - **Sai por um IP do país certo.** Pra sites que só respondem de um país, o run sai por um proxy daquele país (o mesmo tanto no fetch simples quanto no navegador).
 - **Se cair, retoma.** O progresso fica salvo. Queda de conexão não faz recomeçar do zero.
+- **Agendado, não perde dados.** Scrapes em pedaços ou por cron somam o que cada rodada trouxe, em vez de sobrescrever com o último pedaço.
+- **Organiza as categorias.** Além de trazer os dados, o Claude pode mapear as categorias de cada site pra taxonomia da JEM — o motor aplica o mapa e nunca chama uma API externa.
 - **Sai pronto pra usar.** Um `products.csv` que abre no Excel sem sustos e uma wiki organizada por categoria.
+- **Plano de aprovação em PDF.** O briefing pré-run vira um PDF pra gestor ou jurídico assinar (ou um HTML, se não houver Chrome na máquina — a aprovação nunca fica travada).
 - **Pode rodar sozinho.** Pra scrapes agendados, ele roda no GitHub Actions, sem depender do seu computador ficar ligado.
 
 ## Guias
@@ -39,7 +42,7 @@ O motor é Python 3 só com a biblioteca padrão (Playwright é dependência opc
 
 ```bash
 python3 -m venv .venv && .venv/bin/python -m pip install pytest
-.venv/bin/python -m pytest -q     # motor: 263 passando (+1 skip: smoke Playwright)
+.venv/bin/python -m pytest -q     # motor: 326 passando (+2 skip: smokes Playwright)
 ```
 
 Repositório interno JEM Systems. UNLICENSED.

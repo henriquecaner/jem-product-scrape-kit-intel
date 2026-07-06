@@ -1,0 +1,27 @@
+"""CLI: render docs/run-plan.md to HTML + PDF (PDF when Chrome is available)."""
+import argparse
+import sys
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Render the run-plan to HTML/PDF")
+    parser.add_argument("--markdown", default="docs/run-plan.md")
+    parser.add_argument("--out", default="docs")
+    args = parser.parse_args(argv)
+    from drivers.render_pdf import render_pdf
+    try:
+        result = render_pdf(args.markdown, args.out)
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"[run-plan] markdown file not found or unreadable: {exc}",
+              file=sys.stderr)
+        return 2
+    if result["pdf"]:
+        print(f"[run-plan] PDF -> {result['pdf']}")
+    else:
+        print(f"[run-plan] Chrome not found — HTML fallback -> {result['html']}",
+              file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

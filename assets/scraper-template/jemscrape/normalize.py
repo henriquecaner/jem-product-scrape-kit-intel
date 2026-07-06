@@ -15,8 +15,13 @@ def clean_text(html_text):
     return _WS.sub(" ", text).strip()
 
 
-def normalize(raw, *, source_site, source_url, scraped_at, authorization_ref, raw_ref):
+def normalize(raw, *, source_site, source_url, scraped_at, authorization_ref,
+              raw_ref, category_map=None):
     breadcrumbs = list(raw.get("breadcrumbs") or [])
+    category_path = " > ".join(breadcrumbs)
+    category_canonical = ""
+    if category_map:
+        category_canonical = category_map.get(category_path, "")
     description_raw = raw.get("description") or raw.get("description_raw") or ""
     rec = CanonicalRecord(
         source_site=source_site,
@@ -31,7 +36,8 @@ def normalize(raw, *, source_site, source_url, scraped_at, authorization_ref, ra
         description_clean=clean_text(description_raw),
         breadcrumbs=breadcrumbs,
         division=raw.get("division") or (breadcrumbs[0] if breadcrumbs else ""),
-        category_path=" > ".join(breadcrumbs),
+        category_path=category_path,
+        category_canonical=category_canonical,
         images=list(raw.get("images") or []),
         specs=dict(raw.get("specs") or {}),
         prices=list(raw.get("prices") or []),

@@ -7,7 +7,7 @@ CSV_COLUMNS = [
     "schema_version", "product_id", "sku", "name", "brand", "division",
     "category_path", "breadcrumb", "best_price", "price_band", "price_source",
     "list_price", "cost_price", "total_stock", "image_url", "source_url",
-    "description_clean",
+    "description_clean", "category_canonical",
 ]
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")

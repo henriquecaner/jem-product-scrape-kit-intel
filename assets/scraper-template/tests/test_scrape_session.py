@@ -63,7 +63,7 @@ def test_flush_outputs_writes_manifest_and_records(tmp_path, monkeypatch):
     manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest_data["counts"]["scraped"] == 1
 
-    assert records_path == cache_dir / "raw_records.json"
+    assert records_path == tmp_path / "state" / "raw_records.json"
     records = json.loads(records_path.read_text(encoding="utf-8"))
     assert len(records) == 1
     assert records[0]["url"] == "https://x/1"

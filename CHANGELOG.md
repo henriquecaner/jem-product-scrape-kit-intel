@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.3.0
+
+### Fix — acúmulo de records entre runs encadeados (Plano 2c / Unidade 1)
+
+Resolve o follow-up de alta prioridade registrado na 0.2.0: `raw_records.json`/`products.csv` eram sobrescritos a cada run, então um scrape encadeado por chunks (`--limit`) ou cron acumulava só o último chunk.
+
+- `jemscrape/records.py` (novo) — `merge_records(existing, new)`: união por `url`, o mais recente vence, mantendo posição; entradas malformadas são ignoradas.
+- `scrape.py:flush_outputs` — passa a ler/mesclar/gravar em `state/raw_records.json` (versionado, persiste no Actions) em vez de sobrescrever em `data/`; fail-open (arquivo acumulado ausente/corrompido começa vazio + aviso, nunca aborta).
+- `build_dataset.build` — resiliente por-registro: um record que falha `normalize()`/`validate()` é contado em `normalize_errors` e pulado, sem abortar o lote inteiro.
+- `assets/github-actions/scrape.yml` — `build_dataset.py --records state/raw_records.json` (era `data/raw_records.json`).
+- Wizard (`scrape-product-catalog/SKILL.md`): documenta que chunking de runs autenticados agora é seguro e recomendado, sem perder chunks anteriores.
+
+### Feat — categorização assistida por LLM (Plano 2c / Unidade 2, runtime Local)
+
+Normalização determinística ganha um passo opcional de categorização: o motor nunca chama um LLM, mas passa a aplicar um mapa cru→canônico que o Claude (via skill, runtime Local) produz fora do código.
+
+- `jemscrape/canonical.py` — novo campo `CanonicalRecord.category_canonical: str` (default `""`, sem chute quando a categoria crua não está no mapa); `SCHEMA_VERSION` 1.0 → 1.1.
+- `jemscrape/export_csv.py` — `CSV_COLUMNS` ganha `category_canonical` como 18ª coluna (append no fim; não quebra consumidores posicionais das 17 colunas do schema 1.0).
+- `jemscrape/normalize.py` — parâmetro opcional `normalize(..., category_map=None)`: aplica `category_map.get(category_path, "")`; sem mapa, comportamento idêntico ao anterior (coberto por teste de regressão).
+- `jemscrape/categories.py` (novo) — `extract_categories(raw_records)`: categorias cruas distintas com contagem, ordenadas por frequência, para o Claude mapear.
+- `build_dataset.py` — `--extract-categories <out.json>` escreve as categorias distintas e sai sem exportar (não exige `--config`); `--category-map <path>` aplica o mapa no build; caminho inválido/ilegível quando explicitamente pedido → exit 2 (fail-closed).
+- `skills/scrape-normalize-export/SKILL.md` + `references/canonical-record.md` documentam o fluxo extract → mapear (Claude, runtime Local) → aplicar, e o schema 1.1.
+
+### Feat — run-plan em PDF (Plano 2c / Unidade 3)
+
+O run-plan (Markdown) agora também renderiza em HTML e PDF, para a etapa de aprovação nunca travar por falta de software.
+
+- `jemscrape/md_to_html.py` (novo) — conversor Markdown→HTML mínimo, stdlib puro, cobrindo o subset do template do run-plan (H1/H2, listas, tabelas GFM, negrito, parágrafos); escapa `<`/`>`/`&` do conteúdo.
+- `drivers/render_pdf.py` (novo) — descobre o Chrome via Playwright e imprime o HTML em PDF; sem Chrome, grava só o HTML e retorna `pdf: None` (nunca levanta).
+- `render_run_plan.py` (novo, CLI raiz) — `python3 render_run_plan.py --markdown docs/run-plan.md --out docs`.
+- `skills/scrape-run-plan/SKILL.md` documenta os três níveis de output (Markdown sempre, HTML sempre, PDF quando o Chrome está disponível).
+
+### Endurecimento (review por-unidade + review de branch)
+
+Correções TDD achadas nos reviews de cada unidade e no review final da branch (suíte 300 → 326 passando, +2 skip):
+
+- `build_dataset.build` — um item de `raw_records` não-dict não aborta mais o export: o handler de erro deixou de assumir `dict` (evita `AttributeError` no caminho `--records` externo).
+- `drivers/render_pdf.py` — o render de PDF virou best-effort de verdade: uma falha no launch do Chrome / `page.pdf()` cai no fallback HTML em vez de propagar, e um markdown ausente/ilegível sai com exit 2 limpo pelo CLI, honrando "a aprovação nunca trava".
+
 ## 0.2.0
 
 ### Plano 3b — sessão autenticada + geo no GitHub Actions
